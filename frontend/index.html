@@ -280,8 +280,10 @@
         </header>
         
         <div class="disclaimer">
-            ⚠️ <strong>Research Tool Only:</strong> This system is for research and educational purposes only. 
-            Not approved for clinical diagnosis or treatment decisions. All segmentations should be reviewed by qualified medical professionals.
+            ⚠️ <strong>RESEARCH USE ONLY - NOT FOR CLINICAL DIAGNOSIS</strong><br>
+            This system predicts suspected tumour regions using an AI model trained on historical research data. 
+            All outputs represent estimated volumes and should be interpreted by qualified medical professionals only. 
+            This tool is not FDA-approved and must not be used for clinical decision-making.
         </div>
         
         <div class="upload-section">
@@ -349,6 +351,21 @@
                             <div><span>Tumor Core (TC):</span><span id="vol-tc">--</span></div>
                             <div><span>Enhancing (ET):</span><span id="vol-et">--</span></div>
                         </div>
+                    </div>
+                    
+                    <div class="control-group">
+                        <h3>Export & Reports</h3>
+                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                            <button class="btn btn-primary" onclick="downloadReport()" style="width: 100%; padding: 8px;">
+                                📄 Download JSON Report
+                            </button>
+                            <button class="btn btn-primary" onclick="downloadPrediction()" style="width: 100%; padding: 8px;">
+                                💾 Export NIfTI Prediction
+                            </button>
+                        </div>
+                        <p style="font-size: 12px; color: #9ca3af; margin-top: 8px;">
+                            Outputs include SHA-256 hashes, model provenance, and estimated volumes.
+                        </p>
                     </div>
                     
                     <div class="control-group">
@@ -475,6 +492,61 @@
             // In production, would need proper overlay management
             console.log(`Toggle ${region}: ${checkbox.checked}`);
         }
+        
+        async function downloadReport() {
+            if (!currentCaseId) {
+                alert('No case loaded. Please run inference first.');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/report/${currentCaseId}`);
+                if (!response.ok) {
+                    const error = await response.json();
+                    alert(`Failed to generate report: ${error.detail}`);
+                    return;
+                }
+                
+                const report = await response.json();
+                const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `report_${currentCaseId}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+            } catch (error) {
+                alert(`Error downloading report: ${error.message}`);
+            }
+        }
+        
+        async function downloadPrediction() {
+            if (!currentCaseId) {
+                alert('No case loaded. Please run inference first.');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/export/${currentCaseId}`);
+                if (!response.ok) {
+                    const error = await response.json();
+                    alert(`Failed to export prediction: ${error.detail}`);
+                    return;
+                }
+                
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `prediction_${currentCaseId}.nii.gz`;
+                a.click();
+                URL.revokeObjectURL(url);
+            } catch (error) {
+                alert(`Error downloading prediction: ${error.message}`);
+            }
+        }
     </script>
 </body>
 </html>
+
+

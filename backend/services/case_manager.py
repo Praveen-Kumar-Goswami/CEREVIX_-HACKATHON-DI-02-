@@ -30,6 +30,9 @@ class CaseMetadata:
     error_message: Optional[str] = None
     sha256_hashes: Optional[Dict[str, str]] = None
     shape: Optional[tuple] = None
+    inference_time_sec: Optional[float] = None
+    device: Optional[str] = None
+    volumes_ml: Optional[Dict[str, float]] = None
     
     def to_dict(self):
         """Convert to dictionary for JSON serialization"""
@@ -169,3 +172,4 @@ class CaseStateManager:
                 deleted_count += 1
         
         return deleted_count
+

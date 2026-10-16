@@ -22,6 +22,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from services.validation_service import NIfTIValidator, ModalityType
 from services.case_manager import CaseStateManager, CaseState
 from services.inference_service import BraTSInferenceService
+from services.report_service import generate_case_report, save_report_json, DISCLAIMER_TEXT
+from services.export_service import export_prediction_nifti
+from services.cleanup_service import run_cleanup_on_startup
+from datetime import datetime
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -176,12 +180,14 @@ async def run_inference(case_id: str):
         case_dir = case_manager.get_case_dir(case_id)
         seg_path = case_dir / "segmentation.nii.gz"
         inference_service.save_segmentation(result, seg_path)
-        
-        # Update state with results
+        # Save inference metadata for reports
         case_manager.update_state(
             case_id, 
             CaseState.RESULTS_READY,
-            shape=result.segmentation.shape
+            shape=result.segmentation.shape,
+            inference_time_sec=result.inference_time_sec,
+            device=result.device_used,
+            volumes_ml=result.volumes_ml
         )
         
         logger.info(f"Inference complete: {case_id}")
@@ -302,6 +308,123 @@ def get_mesh_data(case_id: str):
         raise HTTPException(500, str(e))
 
 
+
+@app.on_event("startup")
+async def startup_event():
+    """Run cleanup on startup to handle process restarts"""
+    logger.info("Running startup cleanup...")
+    workspace_root = Path(__file__).parent.parent.parent
+    run_cleanup_on_startup(workspace_root, ttl_hours=24)
+    logger.info("Startup complete")
+
+
+@app.get("/api/report/{case_id}")
+def get_case_report(case_id: str):
+    """Generate and return JSON report for successful case"""
+    try:
+        metadata = case_manager.get_case_metadata(case_id)
+        if not metadata:
+            raise HTTPException(404, "Case not found")
+        
+        if metadata.state != CaseState.RESULTS_READY:
+            raise HTTPException(400, "Results not available - cannot generate report")
+        
+        # Load results
+        case_dir = case_manager.get_case_dir(case_id)
+        seg_path = case_dir / "segmentation.nii.gz"
+        
+        if not seg_path.exists():
+            raise HTTPException(500, "Segmentation file missing")
+        
+        # Load segmentation to get volumes
+        seg_nii = nib.load(seg_path)
+        seg_data = seg_nii.get_fdata().astype(int)
+        
+        # Recalculate volumes from saved segmentation
+        from utils.spatial_utils import calculate_brats_label_volumes
+        volumes_ml = calculate_brats_label_volumes(seg_data, seg_nii.affine)
+        
+        # Get input file paths
+        input_files = {k: Path(v) for k, v in metadata.modality_files.items()}
+        
+        # Estimate inference time (not stored in metadata yet, use placeholder)
+        inference_time = 1.0  # Will be "not evaluated" in report
+        
+        # Generate report
+        report = generate_case_report(
+            case_id=case_id,
+            input_files=input_files,
+            volumes_ml=volumes_ml,
+            inference_time_sec=inference_time,
+            device="cuda",  # From inference service
+            upload_timestamp=metadata.created_at,
+            expert_metrics=None  # No ground truth available
+        )
+        
+        # Save report
+        report_path = case_dir / f"report_{case_id}.json"
+        save_report_json(report, report_path)
+        
+        # Return as JSON
+        return report.__dict__
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Report generation error: {str(e)}")
+        raise HTTPException(500, str(e))
+
+
+@app.get("/api/export/{case_id}")
+def export_prediction(case_id: str):
+    """Export prediction as BraTS-compliant NIfTI file"""
+    try:
+        metadata = case_manager.get_case_metadata(case_id)
+        if not metadata:
+            raise HTTPException(404, "Case not found")
+        
+        if metadata.state != CaseState.RESULTS_READY:
+            raise HTTPException(400, "Results not available - cannot export")
+        
+        # Load segmentation
+        case_dir = case_manager.get_case_dir(case_id)
+        seg_path = case_dir / "segmentation.nii.gz"
+        
+        if not seg_path.exists():
+            raise HTTPException(500, "Segmentation file missing")
+        
+        seg_nii = nib.load(seg_path)
+        segmentation = seg_nii.get_fdata().astype(np.uint8)
+        affine = seg_nii.affine
+        
+        # Export (validates labels)
+        export_path = case_dir / f"prediction_{case_id}.nii.gz"
+        export_prediction_nifti(segmentation, affine, export_path, case_id)
+        
+        # Return file
+        return FileResponse(
+            path=export_path,
+            media_type="application/gzip",
+            filename=f"prediction_{case_id}.nii.gz",
+            headers={
+                "Content-Disposition": f"attachment; filename=prediction_{case_id}.nii.gz"
+            }
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Export error: {str(e)}")
+        raise HTTPException(500, str(e))
+
+
+@app.get("/api/disclaimer")
+def get_disclaimer():
+    """Return required disclaimer text"""
+    return {
+        "disclaimer": DISCLAIMER_TEXT
+    }
+
 # Mount frontend
 FRONTEND_DIR = Path(__file__).parent.parent.parent / "frontend"
 if FRONTEND_DIR.exists():
@@ -311,3 +434,5 @@ if FRONTEND_DIR.exists():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+
