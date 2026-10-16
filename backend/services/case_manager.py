@@ -1,4 +1,4 @@
-﻿"""
+"""
 Case State Manager
 Tracks case lifecycle and prevents stale results from being displayed.
 """
@@ -27,12 +27,14 @@ class CaseMetadata:
     created_at: str
     updated_at: str
     modality_files: Dict[str, str]  # modality -> filename
+    expert_mask_path: Optional[str] = None  # Optional expert ground truth mask
     error_message: Optional[str] = None
     sha256_hashes: Optional[Dict[str, str]] = None
     shape: Optional[tuple] = None
     inference_time_sec: Optional[float] = None
     device: Optional[str] = None
     volumes_ml: Optional[Dict[str, float]] = None
+    expert_metrics: Optional[Dict[str, any]] = None  # Expert comparison metrics
     
     def to_dict(self):
         """Convert to dictionary for JSON serialization"""

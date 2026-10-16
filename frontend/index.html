@@ -309,6 +309,18 @@
                 </div>
             </div>
             
+            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #374151;">
+                <h3 style="font-size: 16px; margin-bottom: 8px; color: #9ca3af;">Optional: Expert Ground Truth Mask</h3>
+                <p style="margin-bottom: 12px; color: #6b7280; font-size: 14px;">
+                    Upload an expert-labeled segmentation mask to compare with predicted results. 
+                    Must use BraTS labels (0=background, 1=NCR, 2=ED, 4=ET).
+                </p>
+                <div class="file-input-group">
+                    <label for="expert_mask">Expert Mask (Optional)</label>
+                    <input type="file" id="expert_mask" accept=".nii,.nii.gz">
+                </div>
+            </div>
+            
             <button class="btn btn-primary" id="uploadBtn" onclick="uploadFiles()">
                 Upload and Process
             </button>
@@ -350,6 +362,20 @@
                             <div><span>Whole Tumor (WT):</span><span id="vol-wt">--</span></div>
                             <div><span>Tumor Core (TC):</span><span id="vol-tc">--</span></div>
                             <div><span>Enhancing (ET):</span><span id="vol-et">--</span></div>
+                        </div>
+                    </div>
+                    
+                    <div class="control-group" id="expertMetricsSection" style="display: none;">
+                        <h3>Expert Comparison Metrics</h3>
+                        <div class="volume-info" id="expertMetricsInfo">
+                            <div style="margin-bottom: 12px; font-size: 14px; color: #9ca3af;">Dice Scores:</div>
+                            <div><span>WT Dice:</span><span id="dice-wt">--</span></div>
+                            <div><span>TC Dice:</span><span id="dice-tc">--</span></div>
+                            <div><span>ET Dice:</span><span id="dice-et">--</span></div>
+                            <div style="margin: 12px 0; font-size: 14px; color: #9ca3af;">Sensitivity:</div>
+                            <div><span>WT Sensitivity:</span><span id="sens-wt">--</span></div>
+                            <div><span>TC Sensitivity:</span><span id="sens-tc">--</span></div>
+                            <div><span>ET Sensitivity:</span><span id="sens-et">--</span></div>
                         </div>
                     </div>
                     
@@ -396,6 +422,7 @@
             const t1 = document.getElementById('t1').files[0];
             const t2 = document.getElementById('t2').files[0];
             const flair = document.getElementById('flair').files[0];
+            const expertMask = document.getElementById('expert_mask').files[0];  // Optional
             
             if (!t1ce || !t1 || !t2 || !flair) {
                 statusDiv.innerHTML = '<div class="status-message status-error">Please select all four modalities</div>';
@@ -412,6 +439,12 @@
                 formData.append('t1', t1);
                 formData.append('t2', t2);
                 formData.append('flair', flair);
+                
+                // Add expert mask if provided
+                if (expertMask) {
+                    formData.append('expert_mask', expertMask);
+                    console.log('Expert mask included in upload');
+                }
                 
                 const uploadResp = await fetch('/api/upload', {
                     method: 'POST',
@@ -446,6 +479,9 @@
                 document.getElementById('vol-wt').textContent = inferenceData.volumes_ml.wt_ml.toFixed(2) + ' mL';
                 document.getElementById('vol-tc').textContent = inferenceData.volumes_ml.tc_ml.toFixed(2) + ' mL';
                 document.getElementById('vol-et').textContent = inferenceData.volumes_ml.et_ml.toFixed(2) + ' mL';
+                
+                // Check for expert metrics and display if available
+                await displayExpertMetrics(currentCaseId);
                 
                 // Load viewer
                 await loadViewer(currentCaseId);
@@ -557,6 +593,52 @@
                 URL.revokeObjectURL(url);
             } catch (error) {
                 alert(`Error downloading prediction: ${error.message}`);
+            }
+        }
+        
+        async function displayExpertMetrics(caseId) {
+            try {
+                // Fetch the case report
+                const reportResp = await fetch(`/api/report/${caseId}`);
+                if (!reportResp.ok) {
+                    console.log('Report not available yet');
+                    return;
+                }
+                
+                const report = await reportResp.json();
+                
+                // Check if expert metrics exist
+                if (report.expert_metrics) {
+                    const metrics = report.expert_metrics;
+                    const section = document.getElementById('expertMetricsSection');
+                    section.style.display = 'block';
+                    
+                    // Display Dice scores
+                    const wtDice = metrics.whole_tumor?.dice;
+                    const tcDice = metrics.tumor_core?.dice;
+                    const etDice = metrics.enhancing_tumor?.dice;
+                    
+                    document.getElementById('dice-wt').textContent = wtDice !== null && wtDice !== undefined ? wtDice.toFixed(3) : 'N/A';
+                    document.getElementById('dice-tc').textContent = tcDice !== null && tcDice !== undefined ? tcDice.toFixed(3) : 'N/A';
+                    document.getElementById('dice-et').textContent = etDice !== null && etDice !== undefined ? etDice.toFixed(3) : 'N/A';
+                    
+                    // Display Sensitivity
+                    const wtSens = metrics.whole_tumor?.sensitivity;
+                    const tcSens = metrics.tumor_core?.sensitivity;
+                    const etSens = metrics.enhancing_tumor?.sensitivity;
+                    
+                    document.getElementById('sens-wt').textContent = wtSens !== null && wtSens !== undefined ? wtSens.toFixed(3) : 'N/A';
+                    document.getElementById('sens-tc').textContent = tcSens !== null && tcSens !== undefined ? tcSens.toFixed(3) : 'N/A';
+                    document.getElementById('sens-et').textContent = etSens !== null && etSens !== undefined ? etSens.toFixed(3) : 'N/A';
+                    
+                    console.log('Expert metrics displayed:', metrics);
+                } else {
+                    // Hide expert metrics section if no expert mask was provided
+                    document.getElementById('expertMetricsSection').style.display = 'none';
+                }
+            } catch (error) {
+                console.warn('Could not load expert metrics:', error);
+                document.getElementById('expertMetricsSection').style.display = 'none';
             }
         }
     </script>
