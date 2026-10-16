@@ -2,7 +2,10 @@
 
 **RESEARCH USE ONLY - NOT FOR CLINICAL DIAGNOSIS**
 
+<<<<<<< HEAD
 NeuroScope 3D is a web-based research platform for brain MRI tumor segmentation visualization. It accepts four co-registered skull-stripped brain MRI modalities (T1, T1ce, T2, FLAIR), applies a pretrained MONAI SegResNet model, and provides comprehensive 2D/3D visualization with volumetric measurements and provenance tracking.
+=======
+>>>>>>> 3a98c8278b73e8abec6ab2f9b32646fab19c3b91
 
 **Disclaimer:** This is a research prototype for educational and research purposes only. All predictions represent suspected tumor regions estimated by the model and require expert radiologist review. Not validated for clinical use.
 
