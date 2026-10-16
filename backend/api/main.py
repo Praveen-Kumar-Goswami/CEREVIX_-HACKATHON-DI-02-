@@ -73,7 +73,8 @@ async def upload_case(
     t1ce: UploadFile = File(...),
     t1: UploadFile = File(...),
     t2: UploadFile = File(...),
-    flair: UploadFile = File(...)
+    flair: UploadFile = File(...),
+    expert_mask: Optional[UploadFile] = File(None)
 ):
     """Upload and validate 4-modality case"""
     try:
@@ -99,6 +100,7 @@ async def upload_case(
         
         # Validate each file
         validation_results = {}
+        file_metadata = {}  # Store metadata for expert mask validation
         for modality, path in saved_paths.items():
             modality_type = ModalityType(modality)
             result, metadata = validator.validate_single_file(Path(path), modality_type)
@@ -106,6 +108,7 @@ async def upload_case(
                 "valid": result.is_valid,
                 "error": result.error_message
             }
+            file_metadata[modality] = metadata  # Save metadata
             
             if not result.is_valid:
                 return JSONResponse(
@@ -129,8 +132,41 @@ async def upload_case(
                 }
             )
         
+        
+        # Handle optional expert mask
+        expert_mask_file_path = None
+        if expert_mask is not None:
+            logger.info("Expert mask provided, validating...")
+            expert_mask_path = temp_dir / "expert_mask.nii.gz"
+            expert_content = await expert_mask.read()
+            with open(expert_mask_path, "wb") as f:
+                f.write(expert_content)
+            
+            # Get reference metadata from first modality
+            ref_metadata = file_metadata["t1ce"]
+            
+            # Validate expert mask
+            expert_valid, expert_metadata = validator.validate_expert_mask(
+                expert_mask_path, 
+                ref_metadata
+            )
+            
+            if not expert_valid.is_valid:
+                return JSONResponse(
+                    status_code=400,
+                    content={
+                        "status": "validation_failed",
+                        "error": f"Expert mask validation failed: {expert_valid.error_message}"
+                    }
+                )
+            
+            expert_mask_file_path = str(expert_mask_path)
+            logger.info("Expert mask validated successfully")
+        
         # Create case
         case_id = case_manager.create_case(modality_files=saved_paths)
+        if expert_mask_file_path:
+            case_manager.update_state(case_id, CaseState.RECEIVED, expert_mask_path=expert_mask_file_path)
         case_manager.update_state(case_id, CaseState.VALIDATED)
         
         logger.info(f"Case {case_id} validated successfully")
@@ -180,6 +216,36 @@ async def run_inference(case_id: str):
         case_dir = case_manager.get_case_dir(case_id)
         seg_path = case_dir / "segmentation.nii.gz"
         inference_service.save_segmentation(result, seg_path)
+        
+        # Compute expert metrics if expert mask was provided
+        expert_metrics_data = None
+        if metadata.expert_mask_path and Path(metadata.expert_mask_path).exists():
+            try:
+                from evaluation.metrics import evaluate_case, Region
+                logger.info("Computing metrics against expert mask...")
+                
+                # Load expert mask
+                expert_img = nib.load(metadata.expert_mask_path)
+                expert_seg = expert_img.get_fdata()
+                
+                # Compute metrics
+                metrics_results = evaluate_case(result.segmentation, expert_seg, handle_empty="nan")
+                
+                # Format for report
+                expert_metrics_data = {}
+                for region, region_metrics in metrics_results.items():
+                    region_name = region.value
+                    expert_metrics_data[region_name] = {
+                        "dice": float(region_metrics.dice) if not np.isnan(region_metrics.dice) else None,
+                        "sensitivity": float(region_metrics.sensitivity) if not np.isnan(region_metrics.sensitivity) else None,
+                        "expert_volume_voxels": int(region_metrics.ground_truth_volume_voxels),
+                        "prediction_volume_voxels": int(region_metrics.prediction_volume_voxels)
+                    }
+                
+                logger.info(f"Expert metrics computed: {expert_metrics_data}")
+            except Exception as e:
+                logger.warning(f"Failed to compute expert metrics: {e}")
+                expert_metrics_data = None
         # Save inference metadata for reports
         case_manager.update_state(
             case_id, 
@@ -354,8 +420,8 @@ def get_case_report(case_id: str):
         # Get input file paths
         input_files = {k: Path(v) for k, v in metadata.modality_files.items()}
         
-        # Estimate inference time (not stored in metadata yet, use placeholder)
-        inference_time = 1.0  # Will be "not evaluated" in report
+        # Get inference time from metadata
+        inference_time = metadata.inference_time_sec if metadata.inference_time_sec else 1.0
         
         # Generate report
         report = generate_case_report(
@@ -363,9 +429,9 @@ def get_case_report(case_id: str):
             input_files=input_files,
             volumes_ml=volumes_ml,
             inference_time_sec=inference_time,
-            device="cuda",  # From inference service
+            device=metadata.device if metadata.device else "cuda",
             upload_timestamp=metadata.created_at,
-            expert_metrics=None  # No ground truth available
+            expert_metrics=metadata.expert_metrics
         )
         
         # Save report
