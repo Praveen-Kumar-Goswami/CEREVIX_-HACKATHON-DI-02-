@@ -1,0 +1,71 @@
+﻿=== PROMPT 8 COMPLETE - VERIFICATION SUMMARY ===
+
+✅ CHECKPOINT GATE PASSED
+- All Prompts 1-7 verified complete
+- 78 existing tests passing
+- Environment functional (Python 3.11.9, PyTorch 2.5.1+cu121, CUDA 12.1)
+- Model loaded and verified
+- Evaluation infrastructure tested (12/12 synthetic cases)
+
+✅ PROMPT 8 IMPLEMENTATION
+**Reports & Provenance**:
+- SHA-256 input hashing (deterministic, 64 hex chars)
+- Model provenance (name, version, architecture, license, training data)
+- Git commit tracking (current: ca19f6d or 'unavailable')
+- ISO 8601 timestamps
+- Volume estimates in mL (2 decimal precision)
+- Inference timing (3 decimal precision)
+- Required disclaimer text
+- Missing metrics explicitly None (not 0 or fake data)
+- JSON serialization
+
+**Export**:
+- BraTS-compliant NIfTI (labels 0, 1, 2, 4)
+- Original affine preservation
+- Pre-export validation
+- Post-export verification
+- Uint8 data type
+
+**Privacy & Cleanup**:
+- 24-hour TTL enforcement
+- Startup cleanup (handles restarts)
+- Protected assets: models/, backend/, frontend/, docs/, .git/
+- Cleanup targets: data/uploads/, data/predictions/, data/reports/
+- No external MRI transmission
+- Sanitized error messages
+- Case-based access control
+
+**Frontend**:
+- Updated disclaimer (required wording)
+- Download JSON Report button
+- Export NIfTI Prediction button
+- Visible on every screen
+
+✅ TEST RESULTS: 93/93 PASSING
+- 78 existing tests (validation, spatial, metrics, inference, API)
+- 15 new report tests:
+  * 9 report generation tests
+  * 3 NIfTI export tests
+  * 3 cleanup service tests
+
+✅ ACCEPTANCE CRITERIA
+[x] Valid case can generate report
+[x] Report provenance reflects actual runtime
+[x] Missing fields marked unavailable (not fake)
+[x] Disclaimer appears across app and in reports
+[x] Failed case yields no report
+[x] Cleanup deletes 24h+ uploads, preserves models
+[x] No external MRI transfer
+
+✅ VERIFIED WITH ACTUAL DATA
+- Synthetic evaluation case SYNTHETIC_EVAL_002
+- Ground truth: WT=6648 voxels, TC=1012 voxels, ET=92 voxels
+- Prediction generates valid report with SHA-256 hashes
+- Export produces valid BraTS NIfTI
+- Cleanup protects model weights and code
+
+Git Commit: ca19f6d
+Test Command: python -m pytest backend/tests/ -v
+Result: 93 passed, 3 warnings in 19.82s
+
+READY FOR PROMPT 9
