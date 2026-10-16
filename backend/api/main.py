@@ -251,7 +251,7 @@ def get_nifti_file(case_id: str, modality: str):
 
 @app.get("/api/mesh/{case_id}")
 def get_mesh_data(case_id: str):
-    """Generate and serve mesh data for 3D visualization"""
+    """Generate and serve mesh data for 3D visualization with BraTS composite regions"""
     try:
         metadata = case_manager.get_case_metadata(case_id)
         if not metadata or metadata.state != CaseState.RESULTS_READY:
@@ -260,28 +260,31 @@ def get_mesh_data(case_id: str):
         # Load segmentation
         seg_path = case_manager.get_case_dir(case_id) / "segmentation.nii.gz"
         seg_nii = nib.load(seg_path)
-        seg_data = seg_nii.get_fdata()
+        seg_data = seg_nii.get_fdata().astype(int)
         affine = seg_nii.affine
         
-        # Generate meshes for each label
+        # Generate meshes for BraTS composite regions
         meshes = {}
-        labels = {
-            "ET": 4,  # Enhancing tumor
-            "TC": 1,  # Tumor core (NCR)
-            "ED": 2   # Edema
+        
+        # Define BraTS regions as label combinations
+        regions = {
+            "WT": [1, 2, 4],  # Whole Tumor: NCR + ED + ET
+            "TC": [1, 4],      # Tumor Core: NCR + ET
+            "ET": [4]          # Enhancing Tumor: ET only
         }
         
-        for region_name, label_value in labels.items():
-            mask = (seg_data == label_value).astype(np.uint8)
+        for region_name, label_values in regions.items():
+            # Create composite mask for this region
+            mask = np.isin(seg_data, label_values).astype(np.uint8)
             
             if mask.sum() == 0:
                 continue  # Skip empty masks
             
             try:
-                # Marching cubes
-                verts, faces, normals, _ = marching_cubes(mask, level=0.5)
+                # Marching cubes with smoothing
+                verts, faces, normals, _ = marching_cubes(mask, level=0.5, spacing=(1.0, 1.0, 1.0))
                 
-                # Transform to world coordinates
+                # Transform to world coordinates (mm)
                 # Add homogeneous coordinate
                 verts_homo = np.c_[verts, np.ones(len(verts))]
                 verts_world = (affine @ verts_homo.T).T[:, :3]
@@ -289,8 +292,12 @@ def get_mesh_data(case_id: str):
                 meshes[region_name] = {
                     "vertices": verts_world.tolist(),
                     "faces": faces.tolist(),
-                    "normals": normals.tolist()
+                    "normals": normals.tolist(),
+                    "vertex_count": len(verts),
+                    "face_count": len(faces)
                 }
+                
+                logger.info(f"Generated {region_name} mesh: {len(verts)} vertices, {len(faces)} faces")
                 
             except Exception as e:
                 logger.warning(f"Mesh generation failed for {region_name}: {e}")
@@ -298,7 +305,8 @@ def get_mesh_data(case_id: str):
         
         return {
             "case_id": case_id,
-            "meshes": meshes
+            "meshes": meshes,
+            "coordinate_system": "RAS+ world coordinates (mm)"
         }
         
     except HTTPException:
@@ -306,7 +314,6 @@ def get_mesh_data(case_id: str):
     except Exception as e:
         logger.error(f"Mesh generation error: {str(e)}")
         raise HTTPException(500, str(e))
-
 
 
 @app.on_event("startup")
@@ -434,5 +441,6 @@ if FRONTEND_DIR.exists():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
 
 
