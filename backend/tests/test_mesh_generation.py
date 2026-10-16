@@ -1,4 +1,4 @@
-﻿"""
+"""
 Tests for 3D mesh generation from segmentation masks
 """
 
@@ -9,11 +9,17 @@ from pathlib import Path
 import tempfile
 import sys
 
-# Add backend to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# Add backend and project root to path
+backend_path = Path(__file__).parent.parent
+sys.path.insert(0, str(backend_path))
+sys.path.insert(0, str(backend_path.parent))
 
-from backend.api.main import get_mesh_data
-from backend.services.case_manager import CaseStateManager, CaseState
+try:
+    from backend.api.main import get_mesh_data
+    from backend.services.case_manager import CaseStateManager, CaseState
+except ImportError:
+    from api.main import get_mesh_data
+    from services.case_manager import CaseStateManager, CaseState
 
 
 class TestMeshGeneration:

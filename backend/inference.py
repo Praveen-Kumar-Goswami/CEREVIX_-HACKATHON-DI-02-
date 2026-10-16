@@ -1,4 +1,4 @@
-﻿"""
+"""
 MONAI BraTS Segmentation - Simple Inference CLI
 Loads model and performs inference on 4-modality MRI case.
 
@@ -46,7 +46,7 @@ def load_model(device='cuda'):
     model.load_state_dict(checkpoint)
     model = model.to(device)
     model.eval()
-    print(f"✅ Model loaded from {model_path}")
+    print(f"[OK] Model loaded from {model_path}")
     return model
 
 def preprocess(t1c_path, t1_path, t2_path, flair_path):
@@ -76,7 +76,7 @@ def preprocess(t1c_path, t1_path, t2_path, flair_path):
     original_affine = img_nib.affine
     original_shape = img_nib.shape
     
-    print(f"✅ Loaded images - shape: {processed['image'].shape}")
+    print(f"[OK] Loaded images - shape: {processed['image'].shape}")
     print(f"  Original affine shape: {original_affine.shape}")
     
     return processed['image'].unsqueeze(0), original_affine, original_shape
@@ -99,7 +99,7 @@ def run_inference(model, input_tensor, device='cuda'):
         )
     
     elapsed = time.time() - start_time
-    print(f"✅ Inference complete in {elapsed:.2f} seconds")
+    print(f"[OK] Inference complete in {elapsed:.2f} seconds")
     
     return output, elapsed
 
@@ -132,7 +132,7 @@ def save_prediction(masks, original_affine, output_path):
     # TODO: Convert to BraTS 2021 labels (1=NCR, 2=ED, 4=ET) in later stage
     nii = nib.Nifti1Image(masks.astype(np.uint8), original_affine)
     nib.save(nii, output_path)
-    print(f"✅ Saved: {output_path}")
+    print(f"[OK] Saved: {output_path}")
 
 def main():
     if len(sys.argv) < 6:
@@ -150,7 +150,7 @@ def main():
     # Check files exist
     for p in [t1c_path, t1_path, t2_path, flair_path]:
         if not os.path.exists(p):
-            print(f"❌ Error: File not found: {p}")
+            print(f"[ERROR] Error: File not found: {p}")
             sys.exit(1)
     
     # Check GPU
@@ -186,7 +186,7 @@ def main():
     print(f"Device: {device}")
     print(f"Output shape: {masks.shape}")
     print(f"Output affine: {original_affine.shape}")
-    print(f"\n⚠️  NOTE: Output is 3-channel (TC/WT/ET regions)")
+    print(f"\n[NOTE] Output is 3-channel (TC/WT/ET regions)")
     print(f"    Conversion to BraTS 2021 labels (1/2/4) needed in next stage")
     print(f"{'='*60}")
 

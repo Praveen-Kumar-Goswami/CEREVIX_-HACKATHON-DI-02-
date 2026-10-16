@@ -1,4 +1,4 @@
-﻿"""
+"""
 FastAPI Backend - NeuroScope 3D
 Complete REST API with proper case management integration.
 """
@@ -253,7 +253,8 @@ async def run_inference(case_id: str):
             shape=result.segmentation.shape,
             inference_time_sec=result.inference_time_sec,
             device=result.device_used,
-            volumes_ml=result.volumes_ml
+            volumes_ml=result.volumes_ml,
+            expert_metrics=expert_metrics_data
         )
         
         logger.info(f"Inference complete: {case_id}")
@@ -262,7 +263,8 @@ async def run_inference(case_id: str):
             "case_id": case_id,
             "status": "complete",
             "volumes_ml": result.volumes_ml,
-            "inference_time_sec": result.inference_time_sec
+            "inference_time_sec": result.inference_time_sec,
+            "expert_metrics": expert_metrics_data
         }
         
     except Exception as e:

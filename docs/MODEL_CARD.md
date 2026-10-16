@@ -1,10 +1,10 @@
-﻿# Model Card: NeuroScope 3D - Brain Tumor Segmentation
+# Model Card: NeuroScope 3D - Brain Tumor Segmentation
 
 ## Model Identity
 
 **Model Name:** MONAI BraTS MRI Segmentation (SegResNet)  
 **Version:** Pre-trained weights from MONAI Model Zoo  
-**Model Hash (SHA-256):** `computed from model.pt file`  
+**Model Hash (SHA-256):** `860ccb3f1c21c99d0410ad8a1ac4ef6b8fab60cec0a503b0ba42675741a750ae`  
 **Source:** [MONAI Model Zoo - brats_mri_segmentation](https://github.com/Project-MONAI/model-zoo/tree/dev/models/brats_mri_segmentation)  
 **License:** Apache License 2.0  
 **Architecture:** SegResNet (Residual Encoder-Decoder)
@@ -88,7 +88,7 @@ Label 0 (Background) = everything else
 - Hierarchical label conversion (TC/WT/ET → 1/2/4)
 
 **Device:** CUDA (GPU) preferred, CPU fallback available  
-**Inference Time:** ~16-20 seconds per case (128³ volume on RTX 4050 6GB)
+**Inference Time:** 0.62 seconds GPU sliding-window inference (3.20 seconds total upload-to-report pipeline on 240×240×155 volume on NVIDIA GeForce RTX 4050 Laptop GPU 6GB)
 
 ---
 

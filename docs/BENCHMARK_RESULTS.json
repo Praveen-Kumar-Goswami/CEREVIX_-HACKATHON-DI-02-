@@ -1,0 +1,69 @@
+{
+  "hardware": {
+    "os": "Windows-10-10.0.26300-SP0",
+    "python": "3.11.9",
+    "pytorch": "2.5.1+cu121",
+    "cuda_available": true,
+    "gpu_name": "NVIDIA GeForce RTX 4050 Laptop GPU",
+    "gpu_memory_gb": 6.0,
+    "compute_capability": [
+      8,
+      9
+    ],
+    "cpu": "AMD64 Family 25 Model 124 Stepping 0, AuthenticAMD",
+    "cpu_cores": 12
+  },
+  "cold_model_init_sec": 0.1580447000451386,
+  "runs": [
+    {
+      "run_index": 1,
+      "validation_sec": 0.8387628998607397,
+      "preprocessing_sec": 1.0168434001971036,
+      "gpu_inference_sec": 0.7753035998903215,
+      "postprocessing_sec": 0.08837320003658533,
+      "volume_calc_sec": 0.09337879996746778,
+      "mesh_generation_sec": 0.36890730005688965,
+      "report_export_sec": 0.30105740018188953,
+      "total_upload_to_report_sec": 3.4827878000214696
+    },
+    {
+      "run_index": 2,
+      "validation_sec": 0.8497545002028346,
+      "preprocessing_sec": 0.9121681000106037,
+      "gpu_inference_sec": 0.5486180000007153,
+      "postprocessing_sec": 0.07221059990115464,
+      "volume_calc_sec": 0.06737560010515153,
+      "mesh_generation_sec": 0.33233979996293783,
+      "report_export_sec": 0.2747979999985546,
+      "total_upload_to_report_sec": 3.057501500006765
+    },
+    {
+      "run_index": 3,
+      "validation_sec": 0.9765073999296874,
+      "preprocessing_sec": 0.8059314999263734,
+      "gpu_inference_sec": 0.5347967001143843,
+      "postprocessing_sec": 0.07521329983137548,
+      "volume_calc_sec": 0.06784770009107888,
+      "mesh_generation_sec": 0.32699449989013374,
+      "report_export_sec": 0.27119769994169474,
+      "total_upload_to_report_sec": 3.0587573000229895
+    }
+  ],
+  "averages": {
+    "validation_sec": 0.8883415999977539,
+    "preprocessing_sec": 0.9116476667113602,
+    "gpu_inference_sec": 0.6195727666684737,
+    "postprocessing_sec": 0.07859903325637181,
+    "volume_calc_sec": 0.07620070005456607,
+    "mesh_generation_sec": 0.3427471999699871,
+    "report_export_sec": 0.28235103337404627,
+    "total_upload_to_report_sec": 3.1996822000170746
+  },
+  "target_assessment": {
+    "target_sec": 120.0,
+    "local_achieved_sec": 3.1996822000170746,
+    "local_margin_sec": 116.80031779998292,
+    "local_status": "PASS (<120s on RTX 4050)",
+    "t4_compliance": "NOT TESTED (T4 hardware not available in local test environment; tested on NVIDIA GeForce RTX 4050 Laptop GPU)"
+  }
+}
