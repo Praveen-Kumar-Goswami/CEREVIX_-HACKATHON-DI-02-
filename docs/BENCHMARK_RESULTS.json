@@ -13,57 +13,63 @@
     "cpu": "AMD64 Family 25 Model 124 Stepping 0, AuthenticAMD",
     "cpu_cores": 12
   },
-  "cold_model_init_sec": 0.1580447000451386,
   "runs": [
     {
       "run_index": 1,
-      "validation_sec": 0.8387628998607397,
-      "preprocessing_sec": 1.0168434001971036,
-      "gpu_inference_sec": 0.7753035998903215,
-      "postprocessing_sec": 0.08837320003658533,
-      "volume_calc_sec": 0.09337879996746778,
-      "mesh_generation_sec": 0.36890730005688965,
-      "report_export_sec": 0.30105740018188953,
-      "total_upload_to_report_sec": 3.4827878000214696
+      "validation_sec": 1.1302865999750793,
+      "preprocessing_sec": 1.4281782999169081,
+      "gpu_inference_sec": 6.501979399938136,
+      "postprocessing_sec": 0.20875309989787638,
+      "volume_calc_sec": 0.14603880001232028,
+      "mesh_generation_sec": 0.5611900000367314,
+      "report_export_sec": 0.789939499925822,
+      "total_upload_to_report_sec": 10.766606600023806
     },
     {
       "run_index": 2,
-      "validation_sec": 0.8497545002028346,
-      "preprocessing_sec": 0.9121681000106037,
-      "gpu_inference_sec": 0.5486180000007153,
-      "postprocessing_sec": 0.07221059990115464,
-      "volume_calc_sec": 0.06737560010515153,
-      "mesh_generation_sec": 0.33233979996293783,
-      "report_export_sec": 0.2747979999985546,
-      "total_upload_to_report_sec": 3.057501500006765
+      "validation_sec": 1.4036061000078917,
+      "preprocessing_sec": 1.6334758000448346,
+      "gpu_inference_sec": 1.6013487000018358,
+      "postprocessing_sec": 0.1464671001303941,
+      "volume_calc_sec": 0.1322616001125425,
+      "mesh_generation_sec": 0.6999476999044418,
+      "report_export_sec": 0.5797176999039948,
+      "total_upload_to_report_sec": 6.1971396000590175
     },
     {
       "run_index": 3,
-      "validation_sec": 0.9765073999296874,
-      "preprocessing_sec": 0.8059314999263734,
-      "gpu_inference_sec": 0.5347967001143843,
-      "postprocessing_sec": 0.07521329983137548,
-      "volume_calc_sec": 0.06784770009107888,
-      "mesh_generation_sec": 0.32699449989013374,
-      "report_export_sec": 0.27119769994169474,
-      "total_upload_to_report_sec": 3.0587573000229895
+      "validation_sec": 1.253982299938798,
+      "preprocessing_sec": 1.9215322998352349,
+      "gpu_inference_sec": 1.5308634999673814,
+      "postprocessing_sec": 0.14133089990355074,
+      "volume_calc_sec": 0.13882489991374314,
+      "mesh_generation_sec": 0.7073904001154006,
+      "report_export_sec": 0.401561499806121,
+      "total_upload_to_report_sec": 6.095932299969718
     }
   ],
-  "averages": {
-    "validation_sec": 0.8883415999977539,
-    "preprocessing_sec": 0.9116476667113602,
-    "gpu_inference_sec": 0.6195727666684737,
-    "postprocessing_sec": 0.07859903325637181,
-    "volume_calc_sec": 0.07620070005456607,
-    "mesh_generation_sec": 0.3427471999699871,
-    "report_export_sec": 0.28235103337404627,
-    "total_upload_to_report_sec": 3.1996822000170746
+  "stages_mean_sec": {
+    "1_validation_sec": 1.262624999973923,
+    "2_preprocessing_sec": 1.6610621332656592,
+    "3_gpu_inference_sec": 3.211397199969118,
+    "4_postprocessing_sec": 0.16551703331060708,
+    "5_volume_calc_sec": 0.1390417666795353,
+    "6_mesh_generation_sec": 0.6561760333521912,
+    "7_report_export_sec": 0.5904062332119793
+  },
+  "timing_breakdown": {
+    "model_initialization_cold_sec": 0.2949367000255734,
+    "preloaded_pipeline_sum_sec": 7.686225399763014,
+    "preloaded_pipeline_wallclock_sec": 7.6865595000175135,
+    "cold_start_pipeline_total_sec": 7.9811620997885875
   },
   "target_assessment": {
     "target_sec": 120.0,
-    "local_achieved_sec": 3.1996822000170746,
-    "local_margin_sec": 116.80031779998292,
-    "local_status": "PASS (<120s on RTX 4050)",
-    "t4_compliance": "NOT TESTED (T4 hardware not available in local test environment; tested on NVIDIA GeForce RTX 4050 Laptop GPU)"
+    "preloaded_achieved_sec": 7.686225399763014,
+    "cold_start_achieved_sec": 7.9811620997885875,
+    "margin_under_target_sec": 112.01883790021141,
+    "tested_gpu": "NVIDIA GeForce RTX 4050 Laptop GPU",
+    "local_status": "PASS (<120s on NVIDIA GeForce RTX 4050 Laptop GPU)",
+    "t4_compliance": "NOT TESTED (Organizer's T4 GPU environment was not accessible locally; measurements performed on local RTX 4050 Laptop GPU)"
   }
 }

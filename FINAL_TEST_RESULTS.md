@@ -73,7 +73,36 @@ The following visual artifacts were captured and persisted to `docs/delivery_scr
 
 ---
 
-## 3. Standalone CLI Verification
+## 3. End-to-End Performance Benchmark & Reconciliation
+
+**Benchmark Script:** `backend/benchmark_performance.py`  
+**Test Hardware:** NVIDIA GeForce RTX 4050 Laptop GPU (6.0 GB VRAM, Driver 572.70, CUDA 12.1)  
+**Host CPU & OS:** AMD64 Family 25 Model 124 (12 logical cores), Windows 11 Home 64-bit  
+**Frameworks:** PyTorch 2.5.1+cu121, MONAI 1.6.1, Python 3.11.9  
+**Test Case:** `case001` (240 × 240 × 155 voxels, 1.0 mm³ isotropic)  
+
+### Reconciled Stage Timings (Mean across 3 repeated runs)
+
+| Stage | Duration | Cumulative | Operational Description |
+|---|---|---|---|
+| **[Model Init] Cold Model Load** | **0.295 s** | *One-time* | SegResNet weights loaded from disk into CUDA memory |
+| **Stage 1: File Validation** | 1.263 s | 1.263 s | NIfTI headers, modality presence, spatial shapes & affine matrices |
+| **Stage 2: MRI Preprocessing** | 1.661 s | 2.924 s | 4-channel stack assembly & nonzero intensity normalization |
+| **Stage 3: GPU Inference** | 3.211 s | 6.135 s | Sliding window inference (roi_size 240×240×160, sw_batch_size 1, overlap 0.5) |
+| **Stage 4: Postprocessing & Mapping** | 0.166 s | 6.301 s | Sigmoid thresholding (p > 0.5) and mapping to BraTS labels (1, 2, 4) |
+| **Stage 5: Volume Calculation** | 0.139 s | 6.440 s | Voxel counting multiplied by determinant spacing (WT: 21.90, TC: 3.19, ET: 2.61 mL) |
+| **Stage 6: Marching Cubes Mesh Gen** | 0.656 s | 7.096 s | Isosurface extraction in RAS+ world space (WT: 14,496 faces, TC: 4,008, ET: 2,752) |
+| **Stage 7: Report & NIfTI Export** | 0.590 s | 7.686 s | Structured JSON provenance report and NIfTI prediction serialization |
+
+### Reconciled Totals
+- **Preloaded-Model Pipeline Total (Stages 1-7 Sum):** **7.686 s** *(measured wall-clock: 7.687 s)*
+- **Cold-Start Pipeline Total (Model Init + Stages 1-7):** **7.981 s**
+- **Official Threshold:** < 120.0 seconds (Safety Margin: 112.02 seconds ahead)
+- **T4 GPU Compliance:** **NOT TESTED** (Measured locally on RTX 4050 Laptop GPU; organizer's T4 cloud environment unavailable)
+
+---
+
+## 4. Standalone CLI Verification
 
 **Executable:** `backend/cli.py`  
 **Test Invocation:**
@@ -97,7 +126,7 @@ python backend/cli.py \
 
 ---
 
-## 4. Deterministic Repeatability Audit
+## 5. Deterministic Repeatability Audit
 
 - **Input:** `case001` (T1, T1ce, T2, FLAIR)
 - **Method:** 2 sequential end-to-end inference passes on NVIDIA GeForce RTX 4050 Laptop GPU.
@@ -107,7 +136,7 @@ python backend/cli.py \
 
 ---
 
-## 5. 16 mL Volume Specification Verification
+## 6. 16 mL Volume Specification Verification
 
 - **Test:** `backend/tests/test_spatial_utils.py::test_volume_calculation_known_cube`
 - **Result:** Geometric volume calculation matches exact physical displacement in mL with zero drift across anisotropic and isotropic voxel grids.

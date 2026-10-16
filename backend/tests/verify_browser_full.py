@@ -7,6 +7,7 @@ import asyncio
 import os
 import json
 import time
+import re
 from pathlib import Path
 from playwright.async_api import async_playwright, expect
 
@@ -142,14 +143,18 @@ async def run_full_browser_audit():
         print("\n[Step 8, 9, 10] Testing 3D Marching Cubes Viewer...")
         page_3d = await context.new_page()
         await page_3d.goto(f"http://localhost:8000/3d-brain-viewer.html?case_id={case_id}")
-        await page_3d.wait_for_timeout(3500)
+        # Wait for 3D meshes to load via API
+        loading_3d = page_3d.locator("#loading")
+        await expect(loading_3d).to_have_class(re.compile(r"hidden"), timeout=20000)
         
         # Check disclaimer in 3D viewer
         disclaimer_3d = page_3d.locator("text=RESEARCH USE ONLY")
         await expect(disclaimer_3d).to_be_visible()
         
         # Check 3D coordinate readout
-        coords_3d = await page_3d.locator("#tumor-coords").inner_text()
+        coords_locator = page_3d.locator("#tumor-coords")
+        await expect(coords_locator).to_contain_text("RAS+", timeout=10000)
+        coords_3d = await coords_locator.inner_text()
         print(f"  - 3D Coordinate system: {coords_3d}")
         assert "RAS+" in coords_3d or "mm" in coords_3d, f"Unexpected coords: {coords_3d}"
 

@@ -88,7 +88,7 @@ Label 0 (Background) = everything else
 - Hierarchical label conversion (TC/WT/ET → 1/2/4)
 
 **Device:** CUDA (GPU) preferred, CPU fallback available  
-**Inference Time:** 0.62 seconds GPU sliding-window inference (3.20 seconds total upload-to-report pipeline on 240×240×155 volume on NVIDIA GeForce RTX 4050 Laptop GPU 6GB)
+**Inference Time:** 3.21 seconds GPU sliding-window inference (7.69 seconds preloaded pipeline, 7.98 seconds cold-start total on 240×240×155 volume on NVIDIA GeForce RTX 4050 Laptop GPU 6GB; T4 GPU marked NOT TESTED)
 
 ---
 

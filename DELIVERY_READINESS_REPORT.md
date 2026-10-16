@@ -3,7 +3,7 @@
 **Track:** DI-02 Brain MRI Tumor Segmentation & Visualization  
 **Audit Timestamp:** 2026-10-17 03:15:00 UTC+05:30  
 **Test Suite:** ✅ **108 / 108 PASSING (100%)**  
-**End-to-End Performance:** **3.200 seconds** (Official Target: < 120s on T4 GPU)  
+**End-to-End Performance:** **7.686 seconds** preloaded / **7.981 seconds** cold start (Official Target: < 120s on T4 GPU; local hardware: RTX 4050 6GB; T4 marked NOT TESTED)  
 **Browser Verification:** ✅ **17 / 17 Steps Verified (Playwright Chromium)**  
 **Deterministic Repeatability:** ✅ **Dice = 1.000000 (Exact Array Equality = True)**  
 **Readiness Classification:** **`READY WITH DOCUMENTED LIMITATIONS`**  
@@ -18,7 +18,7 @@ NeuroScope 3D has undergone a complete, rigorous end-to-end performance benchmar
 The delivery is classified as **`READY WITH DOCUMENTED LIMITATIONS`** because:
 1. **Fully Verified & Operational:**
    - 108/108 automated pytest tests pass with zero failures.
-   - The end-to-end upload-to-report pipeline runs in **3.200s** (116.80s below the 120s limit) on local GPU hardware.
+   - The end-to-end upload-to-report pipeline runs in **7.686s** preloaded / **7.981s** cold start (112.02s below the 120s limit) on local GPU hardware (NVIDIA GeForce RTX 4050 Laptop GPU).
    - Playwright automated browser verification confirms all 17 workflow steps succeed end-to-end.
    - The standalone CLI (`backend/cli.py`) accepts 4 MRI modalities + optional expert mask, outputting compliant BraTS 2021 NIfTI files and JSON provenance reports.
    - Real Marching Cubes surface geometry replaces volume-scaled placeholder spheres in the 3D viewer.
@@ -53,22 +53,39 @@ python -m pytest backend/tests -v
 
 The official performance requirement mandates upload-to-report completion in **< 120 seconds** on a T4-class GPU.
 
-### Measured Timings (Mean across 3 repeated runs on 240 × 240 × 155 BraTS MRI volume)
+### Hardware & Software Environment
+- **Operating System:** Windows 11 Home (64-bit, Build 26100)
+- **CPU:** AMD64 Family 25 Model 124 Stepping 0 (12 logical cores)
+- **GPU Tested:** NVIDIA GeForce RTX 4050 Laptop GPU (6.0 GB VRAM, Driver 572.70, CUDA 12.1)
+- **Python / PyTorch:** Python 3.11.9 / PyTorch 2.5.1+cu121 / MONAI 1.6.1
+- **Evaluated Case:** Genuine BraTS research volume `case001` (240 × 240 × 155 voxels, 1.0 mm³ isotropic)
 
-| Stage | Duration | Description |
-|---|---|---|
-| **1. File Upload & Validation** | 0.888 s | Modality presence, NIfTI headers, spatial shape and affine consistency checks |
-| **2. MRI Load & Preprocessing** | 0.912 s | 4-channel stack (T1ce, T1, T2, FLAIR) assembly and nonzero intensity normalization |
-| **3. Model Initialization (Cold)** | 0.158 s | Loading SegResNet weights (17.97 MB) into CUDA memory |
-| **4. GPU Inference** | 0.620 s | Sliding window inference (roi_size 240×240×160, sw_batch_size 1, overlap 0.5) |
-| **5. Postprocessing & Mapping** | 0.079 s | Sigmoid thresholding (p > 0.5) and conversion to BraTS labels (1=NCR, 2=ED, 4=ET) |
-| **6. Volume Calculation** | 0.076 s | Voxel counting multiplied by determinant voxel spacing: WT: 21.90 mL, TC: 3.19 mL, ET: 2.61 mL |
-| **7. Marching Cubes Mesh Gen** | 0.343 s | Isosurface extraction in RAS+ world space: WT: 14,496 faces, TC: 4,008 faces, ET: 2,752 faces |
-| **8. Report & NIfTI Export** | 0.282 s | Structured JSON provenance report and NIfTI prediction serialization |
-| **Total Upload-to-Report** | **3.200 s** | **Official Target: < 120s (Margin: 116.80s ahead)** |
+### Stage Breakdown & Reconciliation (Mean Across 3 Repeated Runs)
 
-> [!NOTE]
-> **T4 Compliance Classification:** **NOT TESTED**. Measurements reflect local performance on an NVIDIA RTX 4050 Laptop GPU (6GB). At 3.20s total pipeline time, the system has an exceptionally large safety margin to meet the 120s target on an NVIDIA T4 GPU.
+To ensure complete transparency and mathematical accuracy, model initialization is strictly separated from the recurring upload-to-report pipeline.
+
+| Pipeline Stage | Mean Duration | Cumulative | Description & Operational Scope |
+|---|---|---|---|
+| **[Model Init] Cold Model Load** | **0.295 s** | *One-time* | SegResNet weights (17.97 MB) loaded from disk into CUDA memory (performed once at startup) |
+| **Stage 1: File Validation** | 1.263 s | 1.263 s | NIfTI headers, modality presence, spatial shapes, and affine matrix consistency checked |
+| **Stage 2: MRI Preprocessing** | 1.661 s | 2.924 s | 4-channel stack (T1ce, T1, T2, FLAIR) assembly and nonzero intensity normalization |
+| **Stage 3: GPU Inference** | 3.211 s | 6.135 s | Sliding window inference on CUDA (roi_size 240×240×160, sw_batch_size 1, overlap 0.5) |
+| **Stage 4: Postprocessing & Mapping** | 0.166 s | 6.301 s | Sigmoid thresholding (p > 0.5) and mapping to BraTS labels (1=NCR, 2=ED, 4=ET) |
+| **Stage 5: Volume Calculation** | 0.139 s | 6.440 s | Voxel counting multiplied by determinant voxel spacing: WT 21.90 mL, TC 3.19 mL, ET 2.61 mL |
+| **Stage 6: Marching Cubes Mesh Gen** | 0.656 s | 7.096 s | Isosurface extraction in RAS+ world space: WT 14,496 faces, TC 4,008 faces, ET 2,752 faces |
+| **Stage 7: Report & NIfTI Export** | 0.590 s | 7.686 s | Structured JSON provenance report and NIfTI prediction serialization |
+
+### Timing Totals & Mathematical Reconciliation
+- **Preloaded-Model Run (Warm Daemon / API Service):**
+  $$\text{Total} = \sum_{i=1}^7 \text{Stage}_i = 1.263 + 1.661 + 3.211 + 0.166 + 0.139 + 0.656 + 0.590 = \mathbf{7.686\text{ s}}$$
+  *(Measured wall-clock elapsed time: **7.687 s**)*
+- **Cold-Start Run (Includes Model Initialization):**
+  $$\text{Total}_{\text{cold}} = \text{Model Init} + \sum_{i=1}^7 \text{Stage}_i = 0.295 + 7.686 = \mathbf{7.981\text{ s}}$$
+
+### Target Assessment & Hardware Attribution
+- **Official Threshold:** < 120.0 seconds
+- **Local Result (RTX 4050 6GB):** **7.686 s** (preloaded) / **7.981 s** (cold start) — **112.02 seconds ahead of deadline**
+- **T4 GPU Compliance:** **NOT TESTED**. Measurements reflect local performance on an NVIDIA GeForce RTX 4050 Laptop GPU. The organizer's cloud T4 GPU environment was not accessible locally. Do not infer verified T4 compliance from local RTX 4050 timings, although the ~8s total execution provides a massive safety buffer.
 
 ---
 

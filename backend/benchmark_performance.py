@@ -188,38 +188,68 @@ def run_benchmark(num_runs: int = 3):
         runs_data.append(run_record)
 
     # Compute summary statistics
+    mean_val = float(np.mean([r["validation_sec"] for r in runs_data]))
+    mean_prep = float(np.mean([r["preprocessing_sec"] for r in runs_data]))
+    mean_inf = float(np.mean([r["gpu_inference_sec"] for r in runs_data]))
+    mean_post = float(np.mean([r["postprocessing_sec"] for r in runs_data]))
+    mean_vol = float(np.mean([r["volume_calc_sec"] for r in runs_data]))
+    mean_mesh = float(np.mean([r["mesh_generation_sec"] for r in runs_data]))
+    mean_rep = float(np.mean([r["report_export_sec"] for r in runs_data]))
+    
+    # Preloaded pipeline total equals the exact sum of the 7 stages
+    sum_preloaded_stages = mean_val + mean_prep + mean_inf + mean_post + mean_vol + mean_mesh + mean_rep
+    wall_clock_preloaded = float(np.mean([r["total_upload_to_report_sec"] for r in runs_data]))
+    cold_start_total = t_cold_model_init + sum_preloaded_stages
+
     summary = {
         "hardware": hw_info,
-        "cold_model_init_sec": t_cold_model_init,
         "runs": runs_data,
-        "averages": {
-            "validation_sec": float(np.mean([r["validation_sec"] for r in runs_data])),
-            "preprocessing_sec": float(np.mean([r["preprocessing_sec"] for r in runs_data])),
-            "gpu_inference_sec": float(np.mean([r["gpu_inference_sec"] for r in runs_data])),
-            "postprocessing_sec": float(np.mean([r["postprocessing_sec"] for r in runs_data])),
-            "volume_calc_sec": float(np.mean([r["volume_calc_sec"] for r in runs_data])),
-            "mesh_generation_sec": float(np.mean([r["mesh_generation_sec"] for r in runs_data])),
-            "report_export_sec": float(np.mean([r["report_export_sec"] for r in runs_data])),
-            "total_upload_to_report_sec": float(np.mean([r["total_upload_to_report_sec"] for r in runs_data]))
+        "stages_mean_sec": {
+            "1_validation_sec": mean_val,
+            "2_preprocessing_sec": mean_prep,
+            "3_gpu_inference_sec": mean_inf,
+            "4_postprocessing_sec": mean_post,
+            "5_volume_calc_sec": mean_vol,
+            "6_mesh_generation_sec": mean_mesh,
+            "7_report_export_sec": mean_rep
+        },
+        "timing_breakdown": {
+            "model_initialization_cold_sec": t_cold_model_init,
+            "preloaded_pipeline_sum_sec": sum_preloaded_stages,
+            "preloaded_pipeline_wallclock_sec": wall_clock_preloaded,
+            "cold_start_pipeline_total_sec": cold_start_total
         },
         "target_assessment": {
             "target_sec": 120.0,
-            "local_achieved_sec": float(np.mean([r["total_upload_to_report_sec"] for r in runs_data])),
-            "local_margin_sec": float(120.0 - np.mean([r["total_upload_to_report_sec"] for r in runs_data])),
-            "local_status": "PASS (<120s on RTX 4050)",
-            "t4_compliance": "NOT TESTED (T4 hardware not available in local test environment; tested on NVIDIA GeForce RTX 4050 Laptop GPU)"
+            "preloaded_achieved_sec": sum_preloaded_stages,
+            "cold_start_achieved_sec": cold_start_total,
+            "margin_under_target_sec": float(120.0 - cold_start_total),
+            "tested_gpu": hw_info["gpu_name"],
+            "local_status": f"PASS (<120s on {hw_info['gpu_name']})",
+            "t4_compliance": "NOT TESTED (Organizer's T4 GPU environment was not accessible locally; measurements performed on local RTX 4050 Laptop GPU)"
         }
     }
 
-    print("\n" + "=" * 70)
-    print("BENCHMARK SUMMARY (Mean across 3 repeated runs)")
-    print("=" * 70)
-    for k, v in summary["averages"].items():
-        print(f"  {k:30s}: {v:.3f} s")
+    print("\n" + "=" * 75)
+    print("BENCHMARK SUMMARY (Reconciled Averages Across 3 Runs)")
+    print("=" * 75)
+    print(f"  [Model Init] Cold Model Load (SegResNet to GPU) : {t_cold_model_init:.3f} s")
+    print(f"  [Stage 1]    File Validation                    : {mean_val:.3f} s")
+    print(f"  [Stage 2]    MRI Load & Preprocessing           : {mean_prep:.3f} s")
+    print(f"  [Stage 3]    GPU Sliding-Window Inference       : {mean_inf:.3f} s")
+    print(f"  [Stage 4]    Postprocessing & Region Mapping    : {mean_post:.3f} s")
+    print(f"  [Stage 5]    Volume Calculation                 : {mean_vol:.3f} s")
+    print(f"  [Stage 6]    Marching Cubes Mesh Generation     : {mean_mesh:.3f} s")
+    print(f"  [Stage 7]    Report & NIfTI Export              : {mean_rep:.3f} s")
+    print("  " + "-" * 65)
+    print(f"  --> Preloaded-Model Run (Stages 1-7 Sum)        : {sum_preloaded_stages:.3f} s")
+    print(f"  --> Cold-Start Run (Model Init + Stages 1-7)     : {cold_start_total:.3f} s")
+    print("=" * 75)
     
-    print("\n[Official Target Assessment]")
-    print(f"  Target: <120.0s")
-    print(f"  Local GPU ({hw_info['gpu_name']}): {summary['averages']['total_upload_to_report_sec']:.2f} s ({summary['target_assessment']['local_margin_sec']:.2f}s under target)")
+    print("\n[Official Target Assessment (<120s on T4 GPU)]")
+    print(f"  Tested Hardware: {hw_info['gpu_name']} ({hw_info['gpu_memory_gb']} GB VRAM)")
+    print(f"  Preloaded Pipeline: {sum_preloaded_stages:.3f} s ({120.0 - sum_preloaded_stages:.2f}s under target)")
+    print(f"  Cold-Start Pipeline: {cold_start_total:.3f} s ({120.0 - cold_start_total:.2f}s under target)")
     print(f"  T4 GPU Compliance: {summary['target_assessment']['t4_compliance']}")
 
     with open("docs/BENCHMARK_RESULTS.json", "w") as f:

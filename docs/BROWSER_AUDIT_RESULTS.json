@@ -1,7 +1,7 @@
 {
   "step_1_2_homepage_render": "PASS",
   "step_3_4_input_validation": "PASS",
-  "step_5_6_genuine_inference": "PASS (case_id: 506290eb-628d-46ed-b54b-b3dbc428e8aa)",
+  "step_5_6_genuine_inference": "PASS (case_id: 12ed49d4-0776-4274-affa-9fee5a17a970)",
   "step_11_region_volumes": "PASS (WT=21.90 mL, TC=3.19 mL, ET=2.61 mL)",
   "step_7_10_2d_viewer_crosshair": "PASS",
   "step_12_13_expert_metrics": "PASS (WT Dice: 0.312, Sens: 0.233)",

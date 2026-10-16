@@ -181,20 +181,21 @@ Benchmark script: `python backend/benchmark_performance.py`
 **Test Hardware:** NVIDIA GeForce RTX 4050 Laptop GPU (6.0 GB VRAM), AMD64 12-core CPU, Windows 11, PyTorch 2.5.1+cu121, Python 3.11.9.  
 **Evaluated on:** Genuine BraTS research volume (240 × 240 × 155 voxels, 1.0 mm³ isotropic).
 
-| Pipeline Stage | Mean Duration (s) | Notes |
-|----------------|-------------------|-------|
-| 1. Upload & File Validation | 0.888 s | Modality headers, shapes, and affines verified |
-| 2. MRI Load & Preprocessing | 0.912 s | 4-channel tensor assembly & intensity normalization |
-| 3. Model Initialization (Cold) | 0.158 s | SegResNet weights loaded to GPU |
-| 4. GPU Inference | 0.620 s | Sliding window (roi_size 240×240×160, sw_batch_size 1) |
-| 5. Postprocessing & Mapping | 0.079 s | Probabilities to BraTS labels (1, 2, 4) |
-| 6. Volume Calculation | 0.076 s | WT: 21.90 mL, TC: 3.19 mL, ET: 2.61 mL |
-| 7. Marching Cubes Mesh Gen | 0.343 s | WT: 14,496 faces, TC: 4,008 faces, ET: 2,752 faces |
-| 8. Report & NIfTI Export | 0.282 s | JSON report + multi-label NIfTI file generation |
-| **Total Upload-to-Report** | **3.200 s** | **Official Target: < 120s (Passes with 116.80s margin)** |
+| Pipeline Stage | Mean Duration (s) | Cumulative | Operational Notes |
+|----------------|-------------------|------------|-------------------|
+| **[Model Init] Cold Model Load** | **0.295 s** | *One-time* | SegResNet weights loaded from disk to GPU at startup |
+| 1. Upload & File Validation | 1.263 s | 1.263 s | Modality presence, headers, shape and affine verified |
+| 2. MRI Load & Preprocessing | 1.661 s | 2.924 s | 4-channel tensor assembly & nonzero intensity normalization |
+| 3. GPU Sliding-Window Inference | 3.211 s | 6.135 s | Sliding window (roi_size 240×240×160, sw_batch_size 1) |
+| 4. Postprocessing & Mapping | 0.166 s | 6.301 s | Sigmoid thresholding (p > 0.5) to BraTS labels (1, 2, 4) |
+| 5. Volume Calculation | 0.139 s | 6.440 s | WT: 21.90 mL, TC: 3.19 mL, ET: 2.61 mL |
+| 6. Marching Cubes Mesh Gen | 0.656 s | 7.096 s | WT: 14,496 faces, TC: 4,008 faces, ET: 2,752 faces |
+| 7. Report & NIfTI Export | 0.590 s | 7.686 s | JSON report + multi-label NIfTI file generation |
+| **Preloaded Pipeline Total (Stages 1-7 Sum)** | **7.686 s** | — | **Official Target: < 120s (112.31s margin ahead)** |
+| **Cold-Start Pipeline Total (Model Init + 1-7)** | **7.981 s** | — | **Official Target: < 120s (112.02s margin ahead)** |
 
 > [!NOTE]
-> **T4-Class GPU Status:** **NOT TESTED** (the hackathon host environment with T4 GPUs was not locally accessible; benchmarks were recorded on the local RTX 4050 Laptop GPU).
+> **T4-Class GPU Status:** **NOT TESTED** (the hackathon host environment with T4 GPUs was not locally accessible; benchmarks were recorded on the local NVIDIA GeForce RTX 4050 Laptop GPU). Do not infer T4 compliance from RTX 4050 timings, although ~8s total execution provides a massive safety buffer.
 
 ## Known Issues & Limitations
 
