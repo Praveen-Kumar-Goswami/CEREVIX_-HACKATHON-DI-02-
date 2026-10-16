@@ -3,8 +3,6 @@
 **Brain MRI Tumor Segmentation Platform** for Research & Teaching  
 Hackathon Track DI-02
 
-> ⚠️ **Research Prototype Only**  
-> This system is for research and teaching purposes. Predictions are not validated for clinical use and must not be used for diagnosis or treatment decisions.
 
 ---
 
