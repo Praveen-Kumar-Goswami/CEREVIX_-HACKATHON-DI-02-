@@ -362,6 +362,9 @@
                             <button class="btn btn-primary" onclick="downloadPrediction()" style="width: 100%; padding: 8px;">
                                 💾 Export NIfTI Prediction
                             </button>
+                            <button class="btn btn-primary" onclick="open3DViewer()" style="width: 100%; padding: 8px; background: #8b5cf6;">
+                                🧠 View in 3D Brain Model
+                            </button>
                         </div>
                         <p style="font-size: 12px; color: #9ca3af; margin-top: 8px;">
                             Outputs include SHA-256 hashes, model provenance, and estimated volumes.
@@ -520,6 +523,17 @@
             }
         }
         
+        
+        function open3DViewer() {
+            if (!currentCaseId) {
+                alert('No case loaded. Please run inference first.');
+                return;
+            }
+            
+            // Open 3D viewer in new window with case ID
+            window.open(`3d-brain-viewer.html?case_id=${currentCaseId}`, '_blank', 'width=1400,height=900');
+        }
+        
         async function downloadPrediction() {
             if (!currentCaseId) {
                 alert('No case loaded. Please run inference first.');
@@ -548,5 +562,7 @@
     </script>
 </body>
 </html>
+
+
 
 
