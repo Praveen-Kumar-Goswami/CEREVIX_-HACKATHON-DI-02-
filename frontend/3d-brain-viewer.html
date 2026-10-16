@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -419,17 +419,20 @@
             backLight.position.set(-50, -50, -50);
             scene.add(backLight);
             
-            // Create brain cortex (simplified sphere with displacement)
-            createCortex();
-            
-            // Create tumor regions
-            createTumorRegions();
-            
             // Window resize
             window.addEventListener('resize', onWindowResize);
             
-            // Hide loading
-            document.getElementById('loading').classList.add('hidden');
+            // Check for case_id parameter
+            const urlParams = new URLSearchParams(window.location.search);
+            const caseId = urlParams.get('case_id');
+            if (caseId && caseId !== 'test') {
+                loadRealMeshesFromAPI(caseId);
+            } else {
+                // Fallback for standalone demo mode
+                createCortex();
+                createTumorRegions();
+                document.getElementById('loading').classList.add('hidden');
+            }
             
             // Start animation
             animate();
@@ -600,42 +603,145 @@
             autoRotate = !autoRotate;
         }
         
-        async function loadFromAPI() {
-            // Get case ID from query params or default
-            const urlParams = new URLSearchParams(window.location.search);
-            const caseId = urlParams.get('case_id');
-            
-            if (!caseId) {
-                alert('No case ID provided. Add ?case_id=YOUR_CASE_ID to URL');
-                return;
-            }
-            
+        async function loadRealMeshesFromAPI(caseId) {
+            const loadingElem = document.getElementById('loading');
+            loadingElem.innerHTML = '<div class="spinner"></div><p>Generating and Loading Marching-Cubes 3D Meshes...</p>';
+            loadingElem.classList.remove('hidden');
+
             try {
-                // Fetch inference results from API
-                const response = await fetch(`/api/report/${caseId}`);
-                if (!response.ok) {
-                    throw new Error('Failed to load case data');
+                // Fetch report for volumes
+                const reportPromise = fetch(`/api/report/${caseId}`).then(r => r.ok ? r.json() : null).catch(() => null);
+                
+                // Fetch mesh geometry
+                const meshResp = await fetch(`/api/mesh/${caseId}`);
+                if (!meshResp.ok) {
+                    throw new Error(`Failed to fetch 3D meshes (HTTP ${meshResp.status})`);
                 }
-                
-                const data = await response.json();
-                
-                // Update volume displays
-                document.getElementById('vol-wt').textContent = data.volumes_ml.wt_ml.toFixed(2) + ' mL';
-                document.getElementById('vol-tc').textContent = data.volumes_ml.tc_ml.toFixed(2) + ' mL';
-                document.getElementById('vol-et').textContent = data.volumes_ml.et_ml.toFixed(2) + ' mL';
-                
-                // Scale tumor regions based on volumes (approximate)
-                const wtRadius = Math.pow(data.volumes_ml.wt_ml * 3 / (4 * Math.PI), 1/3) * 10;
-                const tcRadius = Math.pow(data.volumes_ml.tc_ml * 3 / (4 * Math.PI), 1/3) * 10;
-                const etRadius = Math.pow(data.volumes_ml.et_ml * 3 / (4 * Math.PI), 1/3) * 10;
-                
-                if (edemaED) edemaED.scale.set(wtRadius/20, wtRadius/20, wtRadius/20);
-                if (tumorTC) tumorTC.scale.set(tcRadius/12, tcRadius/12, tcRadius/12);
-                if (tumorET) tumorET.scale.set(etRadius/8, etRadius/8, etRadius/8);
-                
-                alert('Segmentation data loaded successfully!');
-            } catch (error) {
-                alert(`Error loading data: ${error.message}`);
+                const meshData = await meshResp.json();
+                const meshes = meshData.meshes || {};
+
+                // Update coordinate system info
+                const coordElem = document.getElementById('tumor-coords');
+                if (coordElem) {
+                    coordElem.textContent = `Coordinates: ${meshData.coordinate_system || 'RAS+ (mm)'}`;
+                }
+
+                // Create Three.js meshes from actual marching cubes
+                let totalBounds = new THREE.Box3();
+                let hasMeshes = false;
+
+                // Function to build Three.js mesh
+                function buildRegionMesh(mInfo, color, opacity, emissive) {
+                    if (!mInfo || !mInfo.vertices || mInfo.vertices.length === 0) return null;
+                    const geom = new THREE.BufferGeometry();
+                    const verts = new Float32Array(mInfo.vertices.flat());
+                    geom.setAttribute('position', new THREE.BufferAttribute(verts, 3));
+                    if (mInfo.normals && mInfo.normals.length > 0) {
+                        const norms = new Float32Array(mInfo.normals.flat());
+                        geom.setAttribute('normal', new THREE.BufferAttribute(norms, 3));
+                    } else {
+                        geom.computeVertexNormals();
+                    }
+                    const faces = new Uint32Array(mInfo.faces.flat());
+                    geom.setIndex(new THREE.BufferAttribute(faces, 1));
+                    geom.computeBoundingBox();
+
+                    const mat = new THREE.MeshPhongMaterial({
+                        color: color,
+                        transparent: true,
+                        opacity: opacity,
+                        side: THREE.DoubleSide,
+                        emissive: emissive || 0x000000,
+                        emissiveIntensity: emissive ? 0.2 : 0.0,
+                        depthWrite: opacity > 0.8
+                    });
+
+                    const mesh = new THREE.Mesh(geom, mat);
+                    return mesh;
+                }
+
+                // Whole Tumor (WT - blue)
+                if (meshes.whole_tumor || meshes.WT) {
+                    const wtData = meshes.whole_tumor || meshes.WT;
+                    edemaED = buildRegionMesh(wtData, 0x3b82f6, 0.35);
+                    if (edemaED) {
+                        scene.add(edemaED);
+                        totalBounds.expandByObject(edemaED);
+                        hasMeshes = true;
+                    }
+                }
+
+                // Tumor Core (TC - green)
+                if (meshes.tumor_core || meshes.TC) {
+                    const tcData = meshes.tumor_core || meshes.TC;
+                    tumorTC = buildRegionMesh(tcData, 0x10b981, 0.65);
+                    if (tumorTC) {
+                        scene.add(tumorTC);
+                        totalBounds.expandByObject(tumorTC);
+                        hasMeshes = true;
+                    }
+                }
+
+                // Enhancing Tumor (ET - red/magenta)
+                if (meshes.enhancing_tumor || meshes.ET) {
+                    const etData = meshes.enhancing_tumor || meshes.ET;
+                    tumorET = buildRegionMesh(etData, 0xef4444, 0.9, 0xef4444);
+                    if (tumorET) {
+                        scene.add(tumorET);
+                        totalBounds.expandByObject(tumorET);
+                        hasMeshes = true;
+                    }
+                }
+
+                // If real meshes loaded, position camera and reference cortex
+                if (hasMeshes && !totalBounds.isEmpty()) {
+                    const center = new THREE.Vector3();
+                    totalBounds.getCenter(center);
+                    const size = new THREE.Vector3();
+                    totalBounds.getSize(size);
+
+                    // Position schematic cortex relative to real tumor bounding box
+                    createCortex();
+                    if (cortexMesh) {
+                        cortexMesh.position.copy(center);
+                        const maxDim = Math.max(size.x, size.y, size.z, 40);
+                        const scale = (maxDim * 1.8) / 50;
+                        cortexMesh.scale.set(scale, scale, scale);
+                    }
+
+                    // Update UI readouts
+                    document.getElementById('tumor-location').textContent = `Centroid: [${center.x.toFixed(1)}, ${center.y.toFixed(1)}, ${center.z.toFixed(1)}] mm`;
+                    document.getElementById('tumor-diameter').textContent = `${Math.max(size.x, size.y, size.z).toFixed(1)} mm`;
+
+                    // Focus camera on tumor
+                    controls.target.copy(center);
+                    const dist = Math.max(size.length() * 2.5, 120);
+                    camera.position.set(center.x, center.y, center.z + dist);
+                    controls.update();
+                } else {
+                    // Fallback to placeholder if no tumor detected
+                    createCortex();
+                    createTumorRegions();
+                }
+
+                // Handle volumes from report
+                const report = await reportPromise;
+                if (report) {
+                    const vols = report.volumes_ml || report.volume_estimates || {};
+                    const wt = vols.wt_ml ?? vols.whole_tumor_ml ?? 0;
+                    const tc = vols.tc_ml ?? vols.tumor_core_ml ?? 0;
+                    const et = vols.et_ml ?? vols.enhancing_tumor_ml ?? 0;
+                    document.getElementById('vol-wt').textContent = `${Number(wt).toFixed(2)} mL`;
+                    document.getElementById('vol-tc').textContent = `${Number(tc).toFixed(2)} mL`;
+                    document.getElementById('vol-et').textContent = `${Number(et).toFixed(2)} mL`;
+                }
+
+            } catch (err) {
+                console.error('Error loading real meshes:', err);
+                createCortex();
+                createTumorRegions();
+            } finally {
+                loadingElem.classList.add('hidden');
             }
         }
         
