@@ -249,7 +249,10 @@
     
     <div id="info-panel">
         <h1>🧠 NeuroScope 3D</h1>
-        <p style="font-size: 12px; color: #9ca3af; margin-bottom: 12px;">Volumetric Tumor Visualization</p>
+        <p style="font-size: 12px; color: #a5b4fc; margin-bottom: 6px; font-weight: 600;">3D Physical Coordinate Space (RAS+) Segmentation Viewer</p>
+        <div style="font-size: 11px; color: #9ca3af; margin-bottom: 12px; background: rgba(0,0,0,0.3); padding: 6px; border-radius: 4px; line-height: 1.4;">
+            Direct Marching-Cubes reconstruction in millimeter world coordinates (RAS+) from model segmentation. Physical reference frame shown; no unverified outer anatomical cortex model is assumed.
+        </div>
         
         <div class="disclaimer">
             ⚠️ <strong>RESEARCH USE ONLY</strong><br>
@@ -262,7 +265,11 @@
             <span class="stat-value" id="tumor-location">Central</span>
         </div>
         <div class="coordinate" id="tumor-coords">
-            Position: (0.00, 0.00, 0.00)
+            Coordinates: RAS+ world coordinates (mm)
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">Crosshair (3D Sync):</span>
+            <span class="stat-value" id="crosshair-coords">Awaiting 2D Sync</span>
         </div>
         
         <h3>Tumor Volumes</h3>
@@ -310,8 +317,13 @@
         <div class="toggle-group">
             <div class="toggle-item" onclick="toggleLayer('cortex')">
                 <input type="checkbox" id="layer-cortex" checked>
-                <div class="color-dot" style="background: #9ca3af;"></div>
-                <span>Cortex</span>
+                <div class="color-dot" style="background: #6366f1;"></div>
+                <span>Reference Frame (RAS+ mm)</span>
+            </div>
+            <div class="toggle-item" onclick="toggleLayer('crosshair')">
+                <input type="checkbox" id="layer-crosshair" checked>
+                <div class="color-dot" style="background: #ffff00;"></div>
+                <span>3D Crosshair Position</span>
             </div>
             <div class="toggle-item" onclick="toggleLayer('tumor')">
                 <input type="checkbox" id="layer-tumor" checked>
@@ -439,28 +451,64 @@
         }
         
         function createCortex() {
-            const geometry = new THREE.SphereGeometry(50, 64, 64);
+            // Defensible spatial alternative: physical bounding frame & RAS+ axes in millimeters
+            if (cortexMesh) scene.remove(cortexMesh);
+            const frameGroup = new THREE.Group();
+            const boxGeom = new THREE.BoxGeometry(80, 80, 60);
+            const boxEdges = new THREE.EdgesGeometry(boxGeom);
+            const boxMat = new THREE.LineBasicMaterial({ color: 0x6366f1, transparent: true, opacity: 0.45 });
+            const wireframeBox = new THREE.LineSegments(boxEdges, boxMat);
+            frameGroup.add(wireframeBox);
             
-            // Add noise for brain-like surface
-            const positions = geometry.attributes.position;
-            for (let i = 0; i < positions.count; i++) {
-                const vertex = new THREE.Vector3().fromBufferAttribute(positions, i);
-                const noise = Math.random() * 3 - 1.5;
-                vertex.normalize().multiplyScalar(50 + noise);
-                positions.setXYZ(i, vertex.x, vertex.y, vertex.z);
-            }
-            geometry.computeVertexNormals();
+            const axes = new THREE.AxesHelper(35);
+            frameGroup.add(axes);
             
-            const material = new THREE.MeshPhongMaterial({
-                color: 0x9ca3af,
-                transparent: true,
-                opacity: 0.3,
-                side: THREE.DoubleSide,
-                flatShading: false
-            });
-            
-            cortexMesh = new THREE.Mesh(geometry, material);
+            cortexMesh = frameGroup;
             scene.add(cortexMesh);
+        }
+        
+        // 3D Crosshair synchronization
+        let crosshairMarker = null;
+        if (typeof BroadcastChannel !== 'undefined') {
+            const crosshairChannel = new BroadcastChannel('neuroscope_crosshair');
+            crosshairChannel.onmessage = (event) => {
+                if (event.data && event.data.mm) {
+                    update3DCrosshair(event.data.mm, event.data.vox);
+                }
+            };
+        }
+
+        function update3DCrosshair(worldMm, voxelCoord) {
+            if (!scene) return;
+            if (!crosshairMarker) {
+                crosshairMarker = new THREE.Group();
+                
+                // Small glowing sphere at crosshair point
+                const markerGeom = new THREE.SphereGeometry(2.5, 16, 16);
+                const markerMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+                const markerSphere = new THREE.Mesh(markerGeom, markerMat);
+                crosshairMarker.add(markerSphere);
+                
+                // 3D crosshair lines (16mm total span along X, Y, Z)
+                const lineMat = new THREE.LineBasicMaterial({ color: 0xffff00, linewidth: 2 });
+                const pts = [
+                    new THREE.Vector3(-8, 0, 0), new THREE.Vector3(8, 0, 0),
+                    new THREE.Vector3(0, -8, 0), new THREE.Vector3(0, 8, 0),
+                    new THREE.Vector3(0, 0, -8), new THREE.Vector3(0, 0, 8)
+                ];
+                const lineGeom = new THREE.BufferGeometry().setFromPoints(pts);
+                const crossLines = new THREE.LineSegments(lineGeom, lineMat);
+                crosshairMarker.add(crossLines);
+                
+                scene.add(crosshairMarker);
+            }
+            crosshairMarker.position.set(worldMm[0], worldMm[1], worldMm[2]);
+            crosshairMarker.visible = true;
+            
+            const crossElem = document.getElementById('crosshair-coords');
+            if (crossElem) {
+                crossElem.textContent = `[${worldMm[0].toFixed(1)}, ${worldMm[1].toFixed(1)}, ${worldMm[2].toFixed(1)}] mm`;
+            }
         }
         
         function createTumorRegions() {
@@ -551,7 +599,10 @@
             const checkbox = document.getElementById(`layer-${layer}`);
             switch(layer) {
                 case 'cortex':
-                    cortexMesh.visible = checkbox.checked;
+                    if (cortexMesh) cortexMesh.visible = checkbox.checked;
+                    break;
+                case 'crosshair':
+                    if (crosshairMarker) crosshairMarker.visible = checkbox.checked;
                     break;
                 case 'tumor':
                     if (tumorET) tumorET.visible = checkbox.checked;
@@ -700,14 +751,28 @@
                     const size = new THREE.Vector3();
                     totalBounds.getSize(size);
 
-                    // Position schematic cortex relative to real tumor bounding box
-                    createCortex();
-                    if (cortexMesh) {
-                        cortexMesh.position.copy(center);
-                        const maxDim = Math.max(size.x, size.y, size.z, 40);
-                        const scale = (maxDim * 1.8) / 50;
-                        cortexMesh.scale.set(scale, scale, scale);
-                    }
+                    // Create physical bounding frame & axes in RAS+ millimeters
+                    if (cortexMesh) scene.remove(cortexMesh);
+                    const frameGroup = new THREE.Group();
+                    
+                    const boxGeom = new THREE.BoxGeometry(
+                        Math.max(size.x * 1.3, 30),
+                        Math.max(size.y * 1.3, 30),
+                        Math.max(size.z * 1.3, 30)
+                    );
+                    const boxEdges = new THREE.EdgesGeometry(boxGeom);
+                    const boxMat = new THREE.LineBasicMaterial({ color: 0x6366f1, transparent: true, opacity: 0.45 });
+                    const wireframeBox = new THREE.LineSegments(boxEdges, boxMat);
+                    wireframeBox.position.copy(center);
+                    frameGroup.add(wireframeBox);
+                    
+                    // 3D Axes at centroid (RAS+: Red=Right, Green=Anterior, Blue=Superior)
+                    const axes = new THREE.AxesHelper(Math.max(size.length() * 0.4, 25));
+                    axes.position.copy(center);
+                    frameGroup.add(axes);
+                    
+                    cortexMesh = frameGroup;
+                    scene.add(cortexMesh);
 
                     // Update UI readouts
                     document.getElementById('tumor-location').textContent = `Centroid: [${center.x.toFixed(1)}, ${center.y.toFixed(1)}, ${center.z.toFixed(1)}] mm`;

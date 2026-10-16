@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -502,13 +502,27 @@
                 nv.setSliceType(nv.sliceTypeMultiplanar);
                 nv.setColormap('gray');
                 
-                // Crosshair callback
+                // Crosshair callback and bidirectional 3D synchronization
+                const crosshairChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('neuroscope_crosshair') : null;
                 nv.onLocationChange = (data) => {
-                    if (data) {
+                    if (data && data.vox && data.mm) {
                         const voxel = `[${Math.round(data.vox[0])}, ${Math.round(data.vox[1])}, ${Math.round(data.vox[2])}]`;
                         const world = `[${data.mm[0].toFixed(1)}, ${data.mm[1].toFixed(1)}, ${data.mm[2].toFixed(1)}]`;
                         document.getElementById('coord-voxel').textContent = voxel;
                         document.getElementById('coord-world').textContent = world;
+                        
+                        if (crosshairChannel) {
+                            try {
+                                crosshairChannel.postMessage({
+                                    source: '2d_viewer',
+                                    caseId: currentCaseId,
+                                    vox: [Math.round(data.vox[0]), Math.round(data.vox[1]), Math.round(data.vox[2])],
+                                    mm: [Number(data.mm[0].toFixed(2)), Number(data.mm[1].toFixed(2)), Number(data.mm[2].toFixed(2))]
+                                });
+                            } catch (e) {
+                                console.warn('Crosshair broadcast error:', e);
+                            }
+                        }
                     }
                 };
             }

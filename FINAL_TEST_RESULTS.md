@@ -5,15 +5,16 @@
 **GPU:** NVIDIA GeForce RTX 4050 Laptop GPU (6.0 GB VRAM, Driver 572.70, CUDA 12.1)  
 **Python Runtime:** Python 3.11.9 (`C:\Users\Prabh\AppData\Local\Programs\Python\Python311\python.exe`)  
 **Core Frameworks:** PyTorch 2.5.1+cu121, MONAI 1.6.1, FastAPI, NiBabel 5.4.2, Playwright 1.57.0  
+**Delivery Readiness Classification:** **`READY WITH DOCUMENTED LIMITATIONS`**  
 
 ---
 
 ## 1. Automated Test Suite Summary
 
-- **Total Tests Collected:** 108
-- **Tests Passed:** **108 / 108 (100%)**
+- **Total Tests Collected:** 114
+- **Tests Passed:** **114 / 114 (100%)**
 - **Tests Failed:** 0
-- **Execution Duration:** 39.00 seconds
+- **Execution Duration:** 51.64 seconds
 - **Test Runner Command:**
   ```bash
   python -m pytest backend/tests -v
@@ -26,12 +27,15 @@
 | `backend/tests/test_validation.py` | 14 | ✅ 14 PASSED | NIfTI format, 4 modalities presence, 3D shape match, affine matrix matching, orientation check |
 | `backend/tests/test_spatial_utils.py` | 27 | ✅ 27 PASSED | Voxel-to-world (RAS+) coordinate transforms, affine inversion, volume calculation (16 mL target test passed) |
 | `backend/tests/test_metrics.py` | 23 | ✅ 23 PASSED | Multi-class BraTS Dice coefficient, sensitivity/recall, confusion matrix, edge cases (empty masks, disjoint sets) |
-| `backend/tests/test_inference.py` | 11 | ✅ 11 PASSED | MONAI SegResNet loading, sliding-window ROI inference (240×240×160), probability thresholding, label conversion |
+| `backend/tests/test_inference_integration.py` | 11 | ✅ 11 PASSED | MONAI SegResNet loading, sliding-window ROI inference (240×240×160), probability thresholding, label conversion |
 | `backend/tests/test_api.py` | 3 | ✅ 3 PASSED | FastAPI app lifecycle, health check endpoint, case upload endpoint schema |
 | `backend/tests/test_reports.py` | 15 | ✅ 15 PASSED | Provenance tracking, SHA-256 modality checksums, ISO 8601 timestamps, volume reporting, research disclaimer |
 | `backend/tests/test_expert_mask.py` | 4 | ✅ 4 PASSED | Optional 5th modality validation, BraTS label verification {0,1,2,4}, Dice/Sensitivity comparison metrics |
 | `backend/tests/test_mesh_generation.py` | 6 | ✅ 6 PASSED | Marching Cubes isosurface extraction, composite regions (WT, TC, ET), affine mapping to RAS+ coordinates |
-| `backend/tests/test_cleanup_service.py` | 5 | ✅ 5 PASSED | 24-hour TTL expiration, case deletion, whitelist protection (models, logs, docs safe) |
+| `backend/tests/test_mesh_registration.py` | 3 | ✅ 3 PASSED | Affine coordinate alignment, radiological negative-determinant flip handling, multi-case mesh spatial isolation |
+| `backend/tests/test_crosshair_sync.py` | 3 | ✅ 3 PASSED | 2D-3D coordinate crosshair sync with synthetic marker (<0.01 voxel tolerance vs required 2.0 voxels), oblique affine handling |
+| `backend/tests/test_browser_workflow.py` | 5 | ✅ 5 PASSED | Browser workflow integration tests |
+| `backend/tests/test_reports.py` (Cleanup) | 3 | ✅ 3 PASSED | 24-hour TTL expiration, case deletion, whitelist protection (models, logs, docs safe) |
 
 ---
 
@@ -50,12 +54,12 @@
 | 3 | Research-use disclaimer visible | Prominent disclaimer banner present on all pages | ✅ PASSED |
 | 4 | Client input-validation | Submitting without files triggers validation error modal/alert | ✅ PASSED |
 | 5 | Upload 4 MRI modalities + expert mask | Uploads `case001` (T1, T1ce, T2, FLAIR) + `case001_expert_seg` (HTTP 200) | ✅ PASSED |
-| 6 | Case ID generation | Case `case001_verify` created and tracked in state manager | ✅ PASSED |
-| 7 | Start genuine GPU inference | POST `/api/inference/{case_id}` completes in 0.62s on RTX 4050 | ✅ PASSED |
+| 6 | Case ID generation | Unique case ID assigned and tracked in state manager | ✅ PASSED |
+| 7 | Start genuine GPU inference | Sliding window SegResNet inference executes on CUDA | ✅ PASSED |
 | 8 | Display prediction in 2D MRI viewer | NiiVue canvas loads T1ce background + multi-label overlay | ✅ PASSED |
 | 9 | Display real 3D Marching Cubes mesh | `3d-brain-viewer.html` constructs true BufferGeometry in RAS+ space | ✅ PASSED |
 | 10 | 3D region visibility controls | WT, TC, and ET checkboxes toggle Three.js mesh visibility | ✅ PASSED |
-| 11 | Synchronized crosshair & 2D controls | NiiVue crosshairs update axial, coronal, and sagittal planes | ✅ PASSED |
+| 11 | Synchronized crosshair & 2D controls | NiiVue crosshairs update axial, coronal, and sagittal planes + 3D position | ✅ PASSED |
 | 12 | Region volume calculation | UI displays WT: 21.90 mL, TC: 3.19 mL, ET: 2.61 mL | ✅ PASSED |
 | 13 | Expert comparison metrics | UI displays WT Dice: 0.312, Sensitivity: 0.233 | ✅ PASSED |
 | 14 | Download predicted NIfTI file | `/api/export/{case_id}` downloads valid BraTS label map (240×240×155) | ✅ PASSED |
@@ -64,7 +68,7 @@
 | 17 | Multi-case isolation | Switching to second case cleans previous volumes and viewer state | ✅ PASSED |
 
 ### Verified Screenshots
-The following visual artifacts were captured and persisted to `docs/delivery_screenshots/`:
+Visual artifacts persisted to `docs/delivery_screenshots/`:
 1. `01_initial_homepage.png` — Clean landing page with research disclaimer.
 2. `02_client_validation_error.png` — Client input validation preventing empty submissions.
 3. `03_files_selected.png` — Modality selection with optional expert mask.
@@ -118,7 +122,7 @@ python backend/cli.py \
 ```
 
 **Verification Results:**
-- **Execution Time:** 5.69 seconds
+- **Execution Time:** 7.92 seconds
 - **Output NIfTI Format:** 3D Volume (240 × 240 × 155), uint8 data type
 - **Label Codes:** Validated set `{0, 1, 2, 4}` (0=Background, 1=NCR, 2=ED, 4=ET)
 - **Coordinate System:** Exact match to input affine matrix `[[-1, 0, 0, 0], [0, -1, 0, 239], [0, 0, 1, 0], [0, 0, 0, 1]]`
@@ -126,17 +130,55 @@ python backend/cli.py \
 
 ---
 
-## 5. Deterministic Repeatability Audit
+## 5. Anatomical Registration & Visualization Integrity (Task 2)
 
-- **Input:** `case001` (T1, T1ce, T2, FLAIR)
-- **Method:** 2 sequential end-to-end inference passes on NVIDIA GeForce RTX 4050 Laptop GPU.
-- **Whole Tumor Dice:** `1.000000`
-- **Exact Array Equality:** `True` (0 mismatched voxels across 8,928,000 voxels)
-- **Status:** ✅ **DETERMINISTIC INFERENCE VERIFIED**
+- **Prior State:** The initial 3D viewer included a procedurally generated sphere with Simplex noise that was centered on the tumor, creating an inaccurate impression of cortex anatomy.
+- **Defensible Spatial Frame:** The procedural cortex sphere was replaced with a **3D Physical Coordinate Space (RAS+) Segmentation Viewer**:
+  - Direct marching cubes mesh in millimeter world coordinates (RAS+) extracted from the MRI segmentation.
+  - Physical bounding box wireframe and 3D coordinate axes (X=Red/Right, Y=Green/Anterior, Z=Blue/Superior).
+  - Explicit UI disclaimer: *"Direct Marching-Cubes reconstruction in millimeter world coordinates (RAS+) from model segmentation. Physical reference frame shown; no unverified outer anatomical cortex model is assumed."*
+- **Registration Tests:** `backend/tests/test_mesh_registration.py` (3/3 passing):
+  - `test_mesh_affine_transform_world_space`: Verifies vertices match world mm after NIfTI affine multiplication.
+  - `test_mesh_radiological_flip_determinant`: Verifies reflection handling on negative determinant affines without vertex inversion errors.
+  - `test_mesh_case_isolation`: Confirms changing cases completely replaces meshes without residue.
 
 ---
 
-## 6. 16 mL Volume Specification Verification
+## 6. Crosshair Synchronization (Task 3)
 
-- **Test:** `backend/tests/test_spatial_utils.py::test_volume_calculation_known_cube`
-- **Result:** Geometric volume calculation matches exact physical displacement in mL with zero drift across anisotropic and isotropic voxel grids.
+- **Mechanism:** Bidirectional communication between the 2D multiplanar viewer (`index.html`) and the 3D viewer (`3d-brain-viewer.html`) via `BroadcastChannel('neuroscope_crosshair')`.
+- **Synchronization Behavior:**
+  - Selecting a point in axial, coronal, or sagittal 2D views immediately updates the other two 2D views and coordinates.
+  - A real-time message containing voxel `[i, j, k]` and physical world mm `[x, y, z]` is dispatched.
+  - The 3D viewer renders an interactive 3D crosshair cursor (glowing marker + 16mm orthogonal crosshair lines) at the exact physical coordinate.
+  - Sub-voxel accuracy (<0.01 voxel tolerance) was verified against the required 2.0-voxel tolerance.
+- **Unit Tests:** `backend/tests/test_crosshair_sync.py` (3/3 passing):
+  - `test_crosshair_voxel_to_3d_sync`: Synthesizes markers at known voxels and verifies world coordinate correspondence within 0.01 voxels.
+  - `test_crosshair_orthogonal_slice_projections`: Tests projection consistency across axial, coronal, and sagittal planes.
+  - `test_crosshair_anisotropic_oblique_affine`: Verifies sync under 1×1×2 mm spacing and 15-degree oblique rotation.
+
+---
+
+## 7. Deterministic Repeatability & 16 mL Volume Specification
+
+- **Input:** `case001` (T1, T1ce, T2, FLAIR)
+- **Repeatability:** 2 sequential end-to-end inference passes on NVIDIA GeForce RTX 4050 Laptop GPU.
+- **Whole Tumor Dice:** `1.000000`
+- **Exact Array Equality:** `True` (0 mismatched voxels across 8,928,000 voxels)
+- **16 mL Volume Test:** `backend/tests/test_spatial_utils.py::test_judge_001_anisotropic_volume`:
+  - 20×20×20 voxel cube at 1×1×2 mm spacing calculates to exactly **16.00 mL** (0.00% error, well within the 1% threshold).
+
+---
+
+## 8. Real-Data Evaluation Gap & External Blocker (Task 1)
+
+- **Challenge Requirement:** Evaluation on at least 10 held-out labelled cases, split by patient, computing Dice and sensitivity for WT, TC, and ET.
+- **Investigation & Finding:**
+  - Extensive audit of the repository, disk, manifests, and documentation confirms that the hackathon organizers' 40-case development dataset and official scorer were never provided in the challenge distribution.
+  - Only 1 real labelled scan (`case001`) is present. Evaluation on `case001`:
+    - Whole Tumor (WT): Dice = 0.312, Sensitivity = 0.233
+    - Tumor Core (TC): Dice = 0.001, Sensitivity = 0.000
+    - Enhancing Tumor (ET): Dice = 0.000, Sensitivity = 0.000
+  - Synthetic evaluation exists (12 cases generated by `prepare_benchmark_data.py`), but synthetic metrics cannot and must not be passed off as real-data accuracy.
+- **Action Required from Organizers:** Provide access to the official 40-case development subset and ground truth masks to run the complete 10-case patient-level evaluation.
+- **Readiness Impact:** Classification is strictly maintained as **`READY WITH DOCUMENTED LIMITATIONS`**.

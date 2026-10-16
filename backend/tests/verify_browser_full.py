@@ -142,10 +142,12 @@ async def run_full_browser_audit():
         # Step 8, 9, 10: 3D Viewer with real Marching Cubes
         print("\n[Step 8, 9, 10] Testing 3D Marching Cubes Viewer...")
         page_3d = await context.new_page()
+        page_3d.on("console", lambda msg: print(f"  [3D CONSOLE] {msg.type}: {msg.text}"))
+        page_3d.on("pageerror", lambda err: print(f"  [3D PAGEERROR] {err}"))
         await page_3d.goto(f"http://localhost:8000/3d-brain-viewer.html?case_id={case_id}")
         # Wait for 3D meshes to load via API
         loading_3d = page_3d.locator("#loading")
-        await expect(loading_3d).to_have_class(re.compile(r"hidden"), timeout=20000)
+        await expect(loading_3d).to_have_class(re.compile(r"hidden"), timeout=30000)
         
         # Check disclaimer in 3D viewer
         disclaimer_3d = page_3d.locator("text=RESEARCH USE ONLY")

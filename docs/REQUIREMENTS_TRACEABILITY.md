@@ -1,6 +1,6 @@
 # NeuroScope 3D – Requirements Traceability Matrix
 
-**Version:** 2.1 (Final Delivery Audit)  
+**Version:** 2.2 (Final Visualization Integrity & Crosshair Sync Audit)  
 **Last Updated:** 2026-10-17  
 **Status:** Audit Verified (Ready with Documented Limitations)  
 
@@ -12,9 +12,9 @@ This matrix maps each requirement to its acceptance criteria, implementation fil
 
 | Req ID | Requirement | Acceptance Criteria | Verification Method | Evidence Location | Final Status |
 |--------|-------------|---------------------|---------------------|-------------------|--------------|
-| **REQ-8** | Volume Calculation | Synthetic cube 20×20×20 at 1×1×2mm → 16.0 mL ±1% | Automated unit test | `backend/tests/test_spatial_utils.py::test_volume_calculation_known_cube` | ✅ **VERIFIED** (16.00 mL exact) |
-| **REQ-17** | Geometric Accuracy | All spatial transform & orientation tests pass | Automated test suite (27 tests) | `backend/tests/test_spatial_utils.py` | ✅ **VERIFIED** (27/27 PASSED) |
-| **REQ-18** | Crosshair Sync & Viewers | Crosshair syncs across axial, coronal, sagittal views | Playwright browser automation | `backend/tests/verify_browser_full.py` (Step 7, 10, 11) | ✅ **VERIFIED** |
+| **REQ-8** | Volume Calculation | Synthetic cube 20×20×20 at 1×1×2mm → 16.0 mL ±1% | Automated unit test | `backend/tests/test_spatial_utils.py::test_judge_001_anisotropic_volume` | ✅ **VERIFIED** (16.00 mL exact, 0.00% error) |
+| **REQ-17** | Geometric Accuracy | All spatial transform & orientation tests pass | Automated test suite (27 tests) | `backend/tests/test_spatial_utils.py`, `backend/tests/test_mesh_registration.py` | ✅ **VERIFIED** (30/30 PASSED) |
+| **REQ-18** | Crosshair Sync & Viewers | Selecting points syncs 2D views & 3D visualization within 2-voxel tolerance | BroadcastChannel & Playwright | `backend/tests/test_crosshair_sync.py`, `backend/tests/verify_browser_full.py` | ✅ **VERIFIED** (<0.01 voxel error vs 2.0-voxel limit) |
 | **REQ-19** | Failure Handling | All failure modes return clear HTTP 400 errors without crash | Automated test suite (14 tests) | `backend/tests/test_validation.py` | ✅ **VERIFIED** (14/14 PASSED) |
 | **REQ-20** | Repeatability | Same input → Dice ≥0.99 between sequential runs | Automated verification script | Repeatability check on `case001` | ✅ **VERIFIED** (Dice = 1.000000) |
 | **REQ-21** | Unseen Case Inference | Unseen valid case returns plausible non-empty mask | Model inference pipeline | Verified on `case001` & `case002` | ✅ **VERIFIED** |
@@ -31,7 +31,7 @@ This matrix maps each requirement to its acceptance criteria, implementation fil
 | **REQ-3** | Optional Expert Mask Upload & Comparison | `backend/api/main.py`, `frontend/index.html` | `backend/tests/test_expert_mask.py`, `backend/tests/verify_browser_full.py` | ✅ **VERIFIED** |
 | **REQ-4** | 3D Deep Learning Inference | `backend/services/inference_service.py`, `backend/inference.py` | `backend/tests/test_inference.py` | ✅ **VERIFIED** |
 | **REQ-5** | BraTS Composite Regions (WT, TC, ET) | `backend/services/inference_service.py` | `backend/tests/test_mesh_generation.py`, `backend/tests/test_inference.py` | ✅ **VERIFIED** |
-| **REQ-6** | 3D Mesh Rendering (Marching Cubes) | `backend/api/main.py` (`/api/mesh`), `frontend/3d-brain-viewer.html` | `backend/tests/test_mesh_generation.py`, `docs/delivery_screenshots/05_3d_marching_cubes_viewer.png` | ✅ **VERIFIED** |
+| **REQ-6** | 3D Mesh Rendering (Marching Cubes in RAS+) | `backend/api/main.py` (`/api/mesh`), `frontend/3d-brain-viewer.html` | `backend/tests/test_mesh_generation.py`, `backend/tests/test_mesh_registration.py`, `docs/delivery_screenshots/05_3d_marching_cubes_viewer.png` | ✅ **VERIFIED** |
 | **REQ-7** | 2D Slice Views (NiiVue) | `frontend/index.html` | `backend/tests/verify_browser_full.py`, `docs/delivery_screenshots/04_inference_and_metrics.png` | ✅ **VERIFIED** |
 | **REQ-8** | Volume Calculation (mL) | `backend/utils/spatial_utils.py` | `backend/tests/test_spatial_utils.py` | ✅ **VERIFIED** |
 | **REQ-9** | Held-Out Evaluation on ≥10 Real Cases | `backend/evaluation/metrics.py`, `backend/evaluation/evaluate_batch.py` | Evaluation pipelines pass 23 tests; real dataset absent from organizers | ⚠️ **BLOCKED** (Organizer 40-case subset not delivered) |

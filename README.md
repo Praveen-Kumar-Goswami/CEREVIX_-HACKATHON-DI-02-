@@ -275,7 +275,7 @@ Kuru/
 │   ├── services/     # Core services
 │   ├── utils/        # Utilities
 │   ├── evaluation/   # Metrics & evaluation
-│   └── tests/        # 93 comprehensive tests
+│   └── tests/        # 114 comprehensive tests
 ├── frontend/
 │   └── index.html    # NiiVue-based viewer
 ├── models/           # MONAI model weights
@@ -316,7 +316,7 @@ This project is released under Apache 2.0 License.
 
 ---
 
-**Version:** 2.1  
+**Version:** 2.2  
 **Last Updated:** 2026-10-17  
 **Status:** Delivery Ready (Research Use with Documented Limitations)  
-**Tests:** 108/108 Passing  
+**Tests:** 114/114 Passing  
