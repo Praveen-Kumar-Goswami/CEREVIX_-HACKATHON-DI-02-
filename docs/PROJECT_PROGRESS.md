@@ -1,160 +1,181 @@
 ﻿# NeuroScope 3D – Project Progress
 
-**Version:** 1.1 (Prompt 2 Complete)  
+**Version:** 1.3 (Prompt 4 Complete)  
 **Last Updated:** 2026-10-16  
-**Status:** PROMPT 2 VERIFIED - Environment & Model Ready
+**Status:** PROMPT 4 VERIFIED - Spatial Correctness Complete
 
 ---
 
-## PROMPT 2 COMPLETION ✅
+## PROGRESS SUMMARY
 
-### Environment Verified
-- **Python:** 3.11.9 (64-bit)
-- **PyTorch:** 2.5.1+cu121
-- **CUDA:** 12.1
-- **GPU:** NVIDIA GeForce RTX 4050 Laptop GPU (6.00 GB)
-- **MONAI:** 1.6.1
-- **NiBabel:** 5.4.2
-
-### Model Bundle Downloaded & Verified
-- **Bundle:** brats_mri_segmentation v0.1.0
-- **Source:** MONAI Model Zoo (GitHub releases)
-- **Size:** 33.5 MB (bundle), 17.97 MB (model checkpoint)
-- **License:** Apache 2.0 (verified)
-- **Architecture:** SegResNet (4 input channels, 3 output channels)
-- **Training Data:** BraTS 2018 (285 volumes)
-
-### Configuration Verified (from bundle config)
-- **Input Order:** T1c/T1Gd, T1, T2, FLAIR (VERIFIED from docs/README.md)
-- **Output Channels:** TC (channel 0), WT (channel 1), ET (channel 2)
-- **Preprocessing:** NormalizeIntensity (nonzero=true, channel_wise=true)
-- **Inference:** SlidingWindowInferer (ROI 240×240×160, overlap 0.5)
-- **Postprocessing:** Sigmoid + threshold 0.5
-
-### Files Created
-- ✅ ackend/requirements.txt - Pinned dependencies
-- ✅ ackend/download_model.py - Model download script
-- ✅ ackend/inference.py - Inference CLI (not yet tested on real data)
-- ✅ ackend/verify_environment.py - Environment check (ALL PASS)
-- ✅ .gitignore - Excludes data/, models/, __pycache__
-- ✅ docs/MODEL_VERIFICATION.md - Verified model specifications
-
-### Critical Finding ⚠️
-**Output Semantics Issue Discovered:**  
-The MONAI model outputs **region masks** (TC, WT, ET), NOT BraTS component labels (NCR, ED, ET).
-
-**Required Conversion (for BraTS 2021 scorer compliance):**
-- Label 1 (NCR): WT ∩ TC ∩ ¬ET
-- Label 2 (ED): WT ∩ ¬TC  
-- Label 4 (ET): ET channel → label 4
-
-This conversion will be implemented in Prompt 4 (NIfTI validation & label mapping).
+| Prompt | Stage | Status | Tests | Evidence |
+|--------|-------|--------|-------|----------|
+| **1** | Repository Audit | ✅ VERIFIED | N/A | Baseline documented |
+| **2** | Environment & Model | ✅ VERIFIED | 5/5 checks | Model downloaded, verified |
+| **3** | Input Validation | ✅ VERIFIED | 14/14 pass | All judge failure cases |
+| **4** | **Spatial Correctness** | ✅ **VERIFIED** | **27/27 pass** | **Judge geometric tests** |
+| **5** | Inference Pipeline | ⬜ NOT STARTED | 0 | Waiting |
+| **6** | 2D Visualization | ⬜ NOT STARTED | 0 | Waiting |
+| **7** | 3D Visualization | ⬜ NOT STARTED | 0 | Waiting |
+| **8** | Evaluation System | ⬜ NOT STARTED | 0 | Waiting |
+| **9** | Report Generation | ⬜ NOT STARTED | 0 | Waiting |
+| **10** | Judge Tests & Polish | ⬜ NOT STARTED | 0 | Waiting |
 
 ---
 
-## Stage Status Summary
+## PROMPT 4 COMPLETION ✅
 
-| Prompt | Stage | Status | Progress | Blockers |
-|--------|-------|--------|----------|----------|
-| **1** | Repository Audit & Baseline | ✅ **VERIFIED** | 100% | None |
-| **2** | **Environment & Model Setup** | ✅ **VERIFIED** | 100% | None |
-| **3** | Real Inference Test | ⬜ NOT STARTED | 0% | Need sample BraTS case |
-| **4** | NIfTI Validation & Label Conversion | ⬜ NOT STARTED | 0% | Prompt 3 complete |
-| **5** | Spatial Correctness & Volume | ⬜ NOT STARTED | 0% | Synthetic test cases |
-| **6** | Inference Pipeline Integration | ⬜ NOT STARTED | 0% | Prompt 4 complete |
-| **7** | 2D Visualization (NiiVue) | ⬜ NOT STARTED | 0% | Prompt 6 complete |
-| **8** | 3D Visualization (Three.js) | ⬜ NOT STARTED | 0% | Prompt 6 complete |
-| **9** | Evaluation System | ⬜ NOT STARTED | 0% | 10+ labeled BraTS cases |
-| **10** | Report & Judge Tests | ⬜ NOT STARTED | 0% | All previous prompts |
+### Spatial Utilities Implemented
+- **File:** backend/utils/spatial_utils.py (330 lines)
+- **Tests:** 27 comprehensive spatial tests (ALL PASSING)
+- **Coverage:** All 4 judge geometric tests + transforms + volumes
 
----
+### Features Delivered:
 
-## Acceptance Criteria Status (Prompt 2)
+**Affine Matrix Validation:**
+✅ Shape verification (4x4 required)  
+✅ Finite value checks (no NaN/Inf)  
+✅ Non-zero determinant (invertibility)  
+✅ Reasonable voxel sizes (0.01-20mm)  
+✅ Proper homogeneous bottom row [0,0,0,1]  
 
-✅ **Setup commands documented** - See backend/requirements.txt, verify_environment.py  
-✅ **GPU/CUDA status verified** - RTX 4050 6GB, CUDA 12.1 confirmed  
-✅ **Model bundle identified from actual files** - brats_mri_segmentation verified  
-✅ **License verified** - Apache 2.0 (MONAI)  
-✅ **Preprocessing documented** - From configs/inference.json  
-✅ **Output semantics documented** - TC/WT/ET regions (requires conversion)  
-✅ **Inference CLI created** - backend/inference.py  
-⚠️ **Real inference run** - BLOCKED: Need sample 4-modality BraTS case  
-✅ **No fake predictions** - Inference not yet run (waiting for data)  
-✅ **Deterministic setup** - Documented (cudnn.benchmark issue noted)
+**Coordinate Transformations:**
+✅ `voxel_to_world()` - Voxel indices to RAS+ physical space  
+✅ `world_to_voxel()` - Inverse transformation  
+✅ Single point and batch transformations  
+✅ Handles rotation, scaling, translation  
+✅ Round-trip accuracy verified  
 
----
+**Volume Calculation:**
+✅ `calculate_volume_ml()` - Clinically accurate volumes  
+✅ Formula: `voxel_count × |det(affine[:3,:3])| / 1000`  
+✅ Anisotropic voxel handling (1×1×2mm correctly computed)  
+✅ Label-specific volume extraction  
+✅ `calculate_brats_label_volumes()` - WT/TC/ET regions  
 
-## Next Action - BEFORE PROMPT 3
-
-**BLOCKED:** Need sample 4-modality BraTS case to test inference.
-
-### Options:
-
-**Option A: Use Public BraTS Data**
-Download one case from BraTS 2021 validation/training set:
-- https://www.synapse.org/#!Synapse:syn25829067
-- Need 4 files: case_t1.nii.gz, case_t1ce.nii.gz, case_t2.nii.gz, case_flair.nii.gz
-
-**Option B: Use Organizer Starter Kit**
-If organizer provided sample data, use that instead.
-
-**Option C: Create Synthetic Test Case**
-Generate 4 synthetic NIfTI volumes (240×240×155, random data) just to verify pipeline runs.
-
-### Recommended: Option A (Real Data)
-Use public BraTS case to ensure preprocessing works correctly with real MRI characteristics.
+**Spatial Quality Checks:**
+✅ `get_voxel_dimensions()` - Extract spacing from affine  
+✅ `check_orientation_consistency()` - Multi-modal alignment  
+✅ `detect_left_right_flip()` - Reflection detection  
 
 ---
 
-## Performance Expectations (RTX 4050)
+## TEST RESULTS
 
-Based on model specs and GPU:
-- **Expected Inference Time:** 30-60 seconds (faster than T4)
-- **Memory Usage:** ~3-4 GB VRAM (model + single case)
-- **Available VRAM:** 6 GB (sufficient headroom)
+```
+$ pytest tests/test_spatial_utils.py -v
 
----
+27 tests PASSED in 0.22 seconds
 
-## Commands to Run Next (Prompt 3)
+Test Coverage:
+• Affine Validation: 7/7 pass
+• Coordinate Transforms: 6/6 pass
+• Volume Calculation: 7/7 pass
+• Geometric Judge Tests: 4/4 pass ⭐
+• Voxel Dimensions: 3/3 pass
+```
 
-Once sample data available:
-
-\\\powershell
-# Verify environment
-cd backend
-python verify_environment.py
-
-# Run inference on sample case
-python inference.py 
-  data/case001_t1ce.nii.gz 
-  data/case001_t1.nii.gz 
-  data/case001_t2.nii.gz 
-  data/case001_flair.nii.gz 
-  output_pred.nii.gz
-\\\
-
-Expected output:
-- inference time logged
-- GPU utilization confirmed
-- output_pred.nii.gz created (3-channel TC/WT/ET masks)
-- No crashes or OOM errors
+### Judge Geometric Tests (CRITICAL):
+✅ **JUDGE-001:** Anisotropic volume (16.0 mL ±1%)  
+✅ **JUDGE-002:** Left-right flip detection  
+✅ **JUDGE-003:** Orientation consistency  
+✅ **JUDGE-004:** Mirrored anatomy detection  
 
 ---
 
-**PROMPT 2 STATUS:** ✅ **VERIFIED COMPLETE**  
-**Blockers:** Need sample BraTS case (USER ACTION REQUIRED)  
-**Ready for Prompt 3:** After obtaining sample data  
+## CUMULATIVE TEST COVERAGE
 
-**Files Changed (Prompt 2):**
-1. backend/requirements.txt
-2. backend/download_model.py  
-3. backend/inference.py
-4. backend/verify_environment.py
-5. .gitignore
-6. docs/MODEL_VERIFICATION.md
-7. models/brats_mri_segmentation/ (33.5 MB bundle downloaded)
+| Prompt | Module | Tests | Status |
+|--------|--------|-------|--------|
+| 2 | Environment | 5/5 | ✅ Pass |
+| 3 | Validation | 14/14 | ✅ Pass |
+| 4 | Spatial Utils | 27/27 | ✅ Pass |
+| **TOTAL** | **3 modules** | **46/46** | **✅ 100%** |
 
 ---
 
-**Last Updated:** 2026-10-16 - Prompt 2 Environment Setup Complete  
-**Next Prompt:** Real Inference Test (Prompt 3) - Blocked until sample data obtained
+## FILES CREATED (Prompt 4)
+
+1. backend/utils/__init__.py (Package init)
+2. backend/utils/spatial_utils.py (330 lines)
+3. backend/tests/test_spatial_utils.py (340 lines)
+4. docs/PROMPT4_SUMMARY.md (Complete documentation)
+
+**Total Prompt 4:** ~670 lines of tested spatial code
+
+---
+
+## KEY TECHNICAL ACHIEVEMENTS
+
+### Volume Accuracy Example:
+```python
+# 20×20×20 cube at 1×1×2mm spacing
+mask = np.ones((20, 20, 20))
+affine = np.diag([1.0, 1.0, 2.0, 1.0])
+volume = calculate_volume_ml(mask, affine)
+# Result: 16.0 mL (8000 voxels × 2 mm³/voxel ÷ 1000)
+# Error: < 1% ✅ JUDGE-001 PASS
+```
+
+### Coordinate Transform Example:
+```python
+# Voxel [10, 20, 30] at 2mm isotropic
+affine = np.diag([2.0, 2.0, 2.0, 1.0])
+world = voxel_to_world([10, 20, 30], affine)
+# Result: [20.0, 40.0, 60.0] mm in RAS+ space
+```
+
+---
+
+## REQUIREMENTS ADDRESSED
+
+From docs/REQUIREMENTS_TRACEABILITY.md:
+
+✅ **REQ-5:** Voxel spacing preservation (affine matrix handling)  
+✅ **REQ-7:** Volume measurements in mL  
+✅ **REQ-8:** Spatial orientation preservation  
+✅ **REQ-11:** Geometric accuracy tests (JUDGE-001 to JUDGE-004)  
+✅ **REQ-21:** Coordinate system consistency (RAS+)  
+
+---
+
+## NEXT ACTION - PROMPT 5
+
+**Goal:** Model Inference Pipeline
+
+**Tasks:**
+1. Integrate spatial_utils into inference.py
+2. Implement MONAI preprocessing pipeline:
+   - LoadImage + EnsureChannelFirst
+   - ScaleIntensityRange (CT normalization + clipping)
+   - EnsureType (convert to tensor)
+3. Run SegResNet model inference
+4. Convert MONAI region masks (TC/WT/ET channels) → BraTS labels (1/2/4)
+5. Preserve input affine through pipeline
+6. Create synthetic 4-modality NIfTI test case
+7. End-to-end inference test (input NIfTI → output segmentation NIfTI)
+8. Verify output spatial correctness (affine preserved, volume accurate)
+
+**Critical Discovery to Address:**
+- MONAI model outputs 3-channel region masks (TC/WT/ET)
+- Need conversion to BraTS 2021 labels:
+  - Label 1 (NCR) = WT ∩ TC ∩ ¬ET
+  - Label 2 (ED) = WT ∩ ¬TC
+  - Label 4 (ET) = ET channel
+
+**When Ready:**
+```
+Prompt 5 of 10: Model Inference Pipeline
+```
+
+---
+
+**PROMPT 4 STATUS:** ✅ **VERIFIED COMPLETE**  
+**Acceptance Criteria:** All met (27/27 tests passing, all judge geometric tests pass)  
+**Blockers:** None  
+**Ready for Prompt 5:** YES
+
+---
+
+**Last Updated:** 2026-10-16 - Prompt 4 Spatial Correctness Complete  
+**Next Prompt:** Model Inference Pipeline
